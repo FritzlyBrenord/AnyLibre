@@ -14,19 +14,77 @@ import {
   Camera,
   Phone,
   Mail,
-  MapPin,
   Search,
   ChevronDown,
   Loader,
   Star,
-  Calendar,
   DollarSign,
   Clock,
   Award,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
+import LocationSelect from "@/Component/Localisation/LocationSelectionner";
+import {
+  useFreelances,
+  type Langue,
+  type Formation,
+  type Certification,
+} from "@/Context/Freelance/FreelanceContext";
 
-// Composant Select avec recherche
-const SearchableSelect = ({
+// ==================== TYPES ====================
+
+interface FormDataType {
+  firstName: string;
+  lastName: string;
+  username: string;
+  profilePhoto: string | null;
+  description: string;
+  phone: string;
+  phoneCountry: string;
+  languages: Langue[];
+  pays: string;
+  region: string;
+  ville: string;
+  section: string;
+  birthDate: string;
+  gender: string;
+  occupations: Array<{
+    id: number;
+    category: string;
+    skills: string[];
+    experience: string;
+  }>;
+  skills: Array<{
+    id: number;
+    skill: string;
+    level: string;
+  }>;
+  hourlyRate: string;
+  availability: string;
+  education: Formation[];
+  certifications: Certification[];
+  websites: string[];
+  email: string;
+  phoneVerified: boolean;
+  emailVerified: boolean;
+}
+
+interface Errors {
+  [key: string]: string;
+}
+
+// ==================== COMPOSANT SELECT AVEC RECHERCHE ====================
+
+interface SearchableSelectProps {
+  options: string[];
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+  allowAdd?: boolean;
+  onAdd?: (value: string) => void;
+}
+
+const SearchableSelect: React.FC<SearchableSelectProps> = ({
   options,
   value,
   onChange,
@@ -34,10 +92,10 @@ const SearchableSelect = ({
   allowAdd = false,
   onAdd,
 }) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [filteredOptions, setFilteredOptions] = useState(options);
-  const inputRef = useRef(null);
+  const [isOpen, setIsOpen] = useState<boolean>(false);
+  const [searchTerm, setSearchTerm] = useState<string>("");
+  const [filteredOptions, setFilteredOptions] = useState<string[]>(options);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const filtered = options.filter((option) =>
@@ -46,7 +104,7 @@ const SearchableSelect = ({
     setFilteredOptions(filtered);
   }, [searchTerm, options]);
 
-  const handleSelect = (option) => {
+  const handleSelect = (option: string) => {
     onChange(option);
     setSearchTerm("");
     setIsOpen(false);
@@ -113,12 +171,16 @@ const SearchableSelect = ({
   );
 };
 
-const FreelanceRegistrationForm = () => {
-  const [currentStep, setCurrentStep] = useState(1);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showSuccessModal, setShowSuccessModal] = useState(false);
-  const [formData, setFormData] = useState({
-    // Informations personnelles
+// ==================== COMPOSANT PRINCIPAL ====================
+
+const FreelanceRegistrationForm: React.FC = () => {
+  const router = useRouter();
+  const { ajouterFreelance, isLoading } = useFreelances();
+
+  const [currentStep, setCurrentStep] = useState<number>(1);
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [showWelcomeModal, setShowWelcomeModal] = useState<boolean>(true);
+  const [formData, setFormData] = useState<FormDataType>({
     firstName: "",
     lastName: "",
     username: "",
@@ -127,11 +189,12 @@ const FreelanceRegistrationForm = () => {
     phone: "",
     phoneCountry: "",
     languages: [],
-    location: "",
+    pays: "",
+    region: "",
+    ville: "",
+    section: "",
     birthDate: "",
     gender: "",
-
-    // Informations professionnelles
     occupations: [],
     skills: [],
     hourlyRate: "",
@@ -139,35 +202,30 @@ const FreelanceRegistrationForm = () => {
     education: [],
     certifications: [],
     websites: [],
-    portfolio: [],
-    workExperience: [],
-
-    // Informations commerciales
-    specialties: [],
-    serviceTypes: [],
-    preferredProjectSize: "",
-    responseTime: "",
-
-    // Sécurité du compte
     email: "",
     phoneVerified: false,
     emailVerified: false,
   });
 
-  const [errors, setErrors] = useState({});
-  const [selectedLanguage, setSelectedLanguage] = useState("");
-  const [selectedLevel, setSelectedLevel] = useState("");
-  const [selectedSkill, setSelectedSkill] = useState("");
-  const [selectedSkillLevel, setSelectedSkillLevel] = useState("");
-  const [selectedEducationCountry, setSelectedEducationCountry] = useState("");
+  const [errors, setErrors] = useState<Errors>({});
+  const [selectedLanguage, setSelectedLanguage] = useState<string>("");
+  const [selectedLevel, setSelectedLevel] = useState<string>("");
+  const [selectedSkill, setSelectedSkill] = useState<string>("");
+  const [selectedSkillLevel, setSelectedSkillLevel] = useState<string>("");
+  const [selectedEducationCountry, setSelectedEducationCountry] =
+    useState<string>("");
   const [selectedEducationUniversity, setSelectedEducationUniversity] =
-    useState("");
-  const [selectedEducationYear, setSelectedEducationYear] = useState("");
-  const [selectedCertificate, setSelectedCertificate] = useState("");
-  const [selectedCertificateYear, setSelectedCertificateYear] = useState("");
+    useState<string>("");
+  const [selectedEducationYear, setSelectedEducationYear] =
+    useState<string>("");
+  const [selectedCertificate, setSelectedCertificate] = useState<string>("");
+  const [selectedCertificateYear, setSelectedCertificateYear] =
+    useState<string>("");
 
   // Configuration des pays avec codes et validation
-  const phoneCountries = {
+  const phoneCountries: {
+    [key: string]: { code: string; digits: number; pattern: RegExp };
+  } = {
     "Haïti (+509)": { code: "+509", digits: 8, pattern: /^\d{8}$/ },
     "USA (+1)": { code: "+1", digits: 10, pattern: /^\d{10}$/ },
     "Chili (+56)": { code: "+56", digits: 9, pattern: /^\d{9}$/ },
@@ -183,43 +241,23 @@ const FreelanceRegistrationForm = () => {
   };
 
   // Données étendues
-  const occupationCategories = {
+  const occupationCategories: { [key: string]: string[] } = {
     "Digital Marketing": [
       "Affiliate Marketing",
-      "Book & eBook Marketing",
-      "Community Management",
-      "Crowdfunding",
-      "Display Advertising",
-      "E-Commerce Marketing",
       "Email Marketing",
-      "Guest Posting",
-      "Influencer Marketing",
-      "Local SEO",
-      "Marketing Advice",
-      "Marketing Strategy",
-      "Mobile App Marketing",
-      "Music Promotion",
-      "Podcast Marketing",
-      "Public Relations",
-      "Search Engine Marketing (SEM)",
-      "Search Engine Optimization (SEO)",
-      "Social Media Advertising",
+      "SEO",
       "Social Media Marketing",
-      "Text Message Marketing",
-      "Video Marketing",
-      "Web Analytics",
-      "Web Traffic",
+      "Content Marketing",
+      "PPC Advertising",
+      "Marketing Strategy",
     ],
     "Graphic Design": [
       "Logo Design",
       "Brand Identity",
-      "Print Design",
       "Web Design",
+      "UI/UX Design",
       "Illustration",
       "Packaging Design",
-      "Typography",
-      "3D Design",
-      "UI/UX Design",
       "Motion Graphics",
     ],
     "Web Development": [
@@ -229,24 +267,15 @@ const FreelanceRegistrationForm = () => {
       "WordPress",
       "E-commerce Development",
       "Mobile App Development",
-      "DevOps",
-      "Database Design",
-      "API Development",
-      "Web Security",
     ],
     Writing: [
       "Content Writing",
       "Copywriting",
       "Technical Writing",
-      "Creative Writing",
-      "Proofreading",
       "Translation",
       "Blog Writing",
       "SEO Writing",
-      "Academic Writing",
       "Ghostwriting",
-      "Script Writing",
-      "Grant Writing",
     ],
     Audiovisuel: [
       "Video Editing",
@@ -256,115 +285,55 @@ const FreelanceRegistrationForm = () => {
       "Voice Over",
       "Music Production",
       "Sound Design",
-      "Live Streaming",
-      "Podcast Production",
     ],
     Consultation: [
       "Business Consulting",
       "HR Consulting",
       "Financial Consulting",
-      "Legal Consulting",
       "IT Consulting",
       "Marketing Consulting",
       "Strategy Consulting",
     ],
   };
 
-  const [skillsList, setSkillsList] = useState([
+  const [skillsList, setSkillsList] = useState<string[]>([
     "Adobe Photoshop",
     "Adobe Illustrator",
-    "Adobe After Effects",
     "Figma",
-    "Sketch",
     "JavaScript",
     "React",
     "Vue.js",
-    "Angular",
     "Node.js",
     "Python",
     "PHP",
     "WordPress",
-    "Shopify",
-    "WooCommerce",
-    "Magento",
-    "Google Analytics",
-    "Google Ads",
-    "Facebook Ads",
     "SEO",
-    "SEM",
-    "Content Marketing",
-    "Social Media Marketing",
-    "Email Marketing",
-    "Copywriting",
-    "Translation",
-    "Video Editing",
-    "Photography",
-    "3D Modeling",
-    "Project Management",
-    "Data Analysis",
-    "Excel",
-    "PowerPoint",
-    "AutoCAD",
+    "Google Analytics",
   ]);
 
-  const [languagesList, setLanguagesList] = useState([
+  const [languagesList, setLanguagesList] = useState<string[]>([
     "Français",
     "English",
     "Español",
-    "Deutsch",
-    "Italiano",
+    "Kreyòl Ayisyen",
     "Português",
-    "中文",
-    "日本語",
-    "العربية",
-    "Русский",
-    "हिन्दी",
-    "한국어",
-    "Nederlands",
-    "Svenska",
-    "Norsk",
-    "Dansk",
-    "Suomi",
-    "Ελληνικά",
-    "Polski",
-    "Čeština",
   ]);
 
-  const languageLevels = [
+  const languageLevels: string[] = [
     "Débutant (A1-A2)",
     "Intermédiaire (B1-B2)",
     "Avancé (C1-C2)",
     "Natif",
   ];
 
-  const experienceLevels = [
+  const experienceLevels: string[] = [
     "Débutant (< 1 an)",
     "Intermédiaire (1-3 ans)",
     "Confirmé (3-5 ans)",
     "Expert (5+ ans)",
   ];
 
-  const [locations, setLocations] = useState([
-    "Port-au-Prince, Haïti",
-    "Cap-Haïtien, Haïti",
-    "Gonaïves, Haïti",
-    "Les Cayes, Haïti",
-    "Jacmel, Haïti",
-    "Santiago, Chili",
-    "Valparaíso, Chili",
-    "New York, USA",
-    "Los Angeles, USA",
-    "Miami, USA",
-    "Santo Domingo, République Dominicaine",
-    "São Paulo, Brésil",
-    "Rio de Janeiro, Brésil",
-    "Mexico, Mexique",
-    "Paris, France",
-    "Montreal, Canada",
-    "Toronto, Canada",
-  ]);
-
-  const countries = [
+  const countries: string[] = [
     "Haïti",
     "États-Unis",
     "Canada",
@@ -376,100 +345,41 @@ const FreelanceRegistrationForm = () => {
     "Allemagne",
     "Royaume-Uni",
     "Espagne",
-    "Italie",
-    "Portugal",
-    "Japon",
-    "Chine",
-    "Inde",
-    "Australie",
-    "Nouvelle-Zélande",
-    "Suisse",
-    "Belgique",
-    "Pays-Bas",
   ];
 
-  const [universities, setUniversities] = useState([
+  const [universities, setUniversities] = useState<string[]>([
     "Université d'État d'Haïti",
     "Université Caraïbe",
-    "Université Notre Dame d'Haïti",
     "Harvard University",
     "Stanford University",
     "MIT",
-    "Oxford University",
-    "Cambridge University",
     "Sorbonne",
     "Université de Montréal",
-    "McGill University",
-    "Universidad de Chile",
-    "Universidad Católica de Chile",
-    "Universidade de São Paulo",
-    "UNAM",
-    "Universidad Nacional de Colombia",
-    "École Polytechnique",
-    "EPFL",
-    "ETH Zurich",
-    "University of Toronto",
-    "Yale University",
   ]);
 
-  const [certifications, setCertifications] = useState([
+  const [certifications, setCertifications] = useState<string[]>([
     "Google Analytics Certified",
-    "Google Ads Certified",
-    "Facebook Blueprint Certified",
-    "HubSpot Content Marketing Certified",
     "AWS Certified Solutions Architect",
-    "Microsoft Azure Certified",
-    "Salesforce Certified Administrator",
-    "Adobe Certified Expert (ACE)",
-    "Cisco Certified Network Associate (CCNA)",
-    "Project Management Professional (PMP)",
+    "Adobe Certified Expert",
+    "PMP",
     "Scrum Master Certified",
-    "CompTIA Security+",
-    "Oracle Certified Professional",
-    "Shopify Partner Certified",
-    "WordPress Certified Developer",
-    "LinkedIn Marketing Solutions Certified",
-    "Hootsuite Social Media Marketing Certified",
-    "Google Cloud Professional",
-    "IBM Data Science Professional Certificate",
-    "Coursera Specialization",
   ]);
 
-  // Générer les années (des 50 dernières années à aujourd'hui)
-  const currentYear = new Date().getFullYear();
-  const years = Array.from({ length: 51 }, (_, i) => currentYear - i);
-
-  const serviceTypes = [
-    "Projets ponctuels",
-    "Contrats long terme",
-    "Consultation horaire",
-    "Maintenance continue",
-    "Formation/Coaching",
-    "Audit et analyse",
-    "Support technique",
-    "Création de contenu",
-  ];
-
-  const projectSizes = [
-    "Petits projets (< 500$)",
-    "Projets moyens (500$ - 5000$)",
-    "Gros projets (> 5000$)",
-    "Projets enterprise",
-    "Startups",
-    "PME",
-    "Grandes entreprises",
-  ];
+  const currentYear: number = new Date().getFullYear();
+  const years: string[] = Array.from({ length: 51 }, (_, i) =>
+    (currentYear - i).toString()
+  );
 
   // Fonctions de validation
-  const validatePhone = (phone, country) => {
+  const validatePhone = (phone: string, country: string): boolean => {
     if (!country || !phone) return false;
     const countryConfig = phoneCountries[country];
     if (!countryConfig) return false;
     return countryConfig.pattern.test(phone);
   };
 
-  const validateCurrentStep = () => {
-    const newErrors = {};
+  const validateCurrentStep = (): boolean => {
+    const newErrors: Errors = {};
 
     if (currentStep === 1) {
       if (!formData.firstName.trim()) newErrors.firstName = "Prénom requis";
@@ -486,11 +396,17 @@ const FreelanceRegistrationForm = () => {
         const countryConfig = phoneCountries[formData.phoneCountry];
         newErrors.phone = `Numéro invalide. ${
           countryConfig?.digits || 8
-        } chiffres requis pour ${formData.phoneCountry}`;
+        } chiffres requis`;
       }
       if (formData.languages.length === 0)
         newErrors.languages = "Au moins une langue requise";
-      if (!formData.location) newErrors.location = "Localisation requise";
+      if (
+        !formData.pays ||
+        !formData.region ||
+        !formData.ville ||
+        !formData.section
+      )
+        newErrors.location = "Localisation complète requise";
     }
 
     if (currentStep === 2) {
@@ -514,23 +430,26 @@ const FreelanceRegistrationForm = () => {
   };
 
   // Gestionnaires d'événements
-  const handleInputChange = (field, value) => {
+  const handleInputChange = (field: keyof FormDataType, value: any) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
     if (errors[field]) {
       setErrors((prev) => ({ ...prev, [field]: "" }));
     }
   };
 
-  const addLanguage = (language, level) => {
-    if (!formData.languages.find((l) => l.language === language)) {
+  const addLanguage = (language: string, level: string) => {
+    if (!formData.languages.find((l) => l.langue === language)) {
       setFormData((prev) => ({
         ...prev,
-        languages: [...prev.languages, { language, level, id: Date.now() }],
+        languages: [
+          ...prev.languages,
+          { langue: language, niveau: level, id: Date.now() },
+        ],
       }));
     }
   };
 
-  const addSkill = (skill, level) => {
+  const addSkill = (skill: string, level: string) => {
     if (!formData.skills.find((s) => s.skill === skill)) {
       setFormData((prev) => ({
         ...prev,
@@ -539,12 +458,12 @@ const FreelanceRegistrationForm = () => {
     }
   };
 
-  const addEducation = (country, university, year) => {
-    const newEducation = {
+  const addEducation = (country: string, university: string, year: string) => {
+    const newEducation: Formation = {
+      pays: country,
+      universite: university,
+      annee: year,
       id: Date.now(),
-      country,
-      university,
-      year,
     };
     setFormData((prev) => ({
       ...prev,
@@ -552,11 +471,11 @@ const FreelanceRegistrationForm = () => {
     }));
   };
 
-  const addCertification = (certificate, year) => {
-    const newCertification = {
+  const addCertification = (certificate: string, year: string) => {
+    const newCertification: Certification = {
+      nom: certificate,
+      annee: year,
       id: Date.now(),
-      certificate,
-      year,
     };
     setFormData((prev) => ({
       ...prev,
@@ -564,12 +483,15 @@ const FreelanceRegistrationForm = () => {
     }));
   };
 
-  const handlePhotoUpload = (event) => {
-    const file = event.target.files[0];
+  const handlePhotoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
     if (file) {
       const reader = new FileReader();
       reader.onload = (e) => {
-        setFormData((prev) => ({ ...prev, profilePhoto: e.target.result }));
+        setFormData((prev) => ({
+          ...prev,
+          profilePhoto: e.target?.result as string,
+        }));
       };
       reader.readAsDataURL(file);
     }
@@ -578,7 +500,6 @@ const FreelanceRegistrationForm = () => {
   // Auto-fill des données de sécurité
   useEffect(() => {
     if (currentStep === 3) {
-      // Auto-remplir email et téléphone depuis les étapes précédentes
       const emailFromPreviousSteps = formData.firstName
         ? `${formData.firstName.toLowerCase()}.${formData.lastName.toLowerCase()}@example.com`
         : "user@example.com";
@@ -606,23 +527,128 @@ const FreelanceRegistrationForm = () => {
 
     setIsSubmitting(true);
 
-    // Simuler l'envoi des données
     try {
-      await new Promise((resolve) => setTimeout(resolve, 3000));
-      alert("Inscription réussie ! Bienvenue sur Anylibre !");
+      // Préparer les données pour le contexte
+      const dataToSubmit = {
+        nom: formData.lastName,
+        prenom: formData.firstName,
+        username: formData.username,
+        email: formData.email,
+        telephone: formData.phone,
+        pays_telephone: formData.phoneCountry,
+        pays: formData.pays,
+        region: formData.region,
+        ville: formData.ville,
+        section: formData.section,
+        date_naissance: formData.birthDate,
+        genre: formData.gender,
+        photo_url: formData.profilePhoto || undefined,
+        description: formData.description,
+        occupations: formData.occupations.flatMap((occ) => occ.skills),
+        competences: formData.skills.map((s) => s.skill),
+        tarif_horaire: parseFloat(formData.hourlyRate),
+        disponibilite: formData.availability,
+        langues: formData.languages,
+        formations: formData.education,
+        certifications: formData.certifications,
+        sites_web: formData.websites,
+        statut: "actif" as const,
+      };
+
+      await ajouterFreelance(dataToSubmit);
+      setShowWelcomeModal(true);
     } catch (error) {
+      console.error("Erreur lors de l'inscription:", error);
       alert("Erreur lors de l'inscription. Veuillez réessayer.");
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const getCompletionRate = () => {
+  const handlePublishService = () => {
+    router.push("/TableauDeBord/Service"); // ou la route appropriée
+  };
+
+  const handleMaybeLater = () => {
+    router.push("/TableauDeBord"); // ou dashboard
+  };
+
+  const handleViewGuide = () => {
+    router.push("/guide-utilisation"); // ou ouvrir un modal de tutoriel
+  };
+  const getCompletionRate = (): number => {
     return Math.round((currentStep / 3) * 100);
   };
 
+  // Modal de Bienvenue
+  const WelcomeModal = () => {
+    if (!showWelcomeModal) return null;
+
+    return (
+      <div className="fixed inset-0 bg-green-400 bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 animate-fade-in">
+          {/* Header avec icône de succès */}
+          <div className="text-center mb-6">
+            <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Check className="text-green-600" size={40} />
+            </div>
+            <h2 className="text-3xl font-bold text-gray-900 mb-2">
+              Bienvenue sur Anylibre ! 🎉
+            </h2>
+            <p className="text-xl text-gray-700 font-medium">
+              {formData.firstName} {formData.lastName}
+            </p>
+          </div>
+
+          {/* Message */}
+          <div className="bg-blue-50 p-4 rounded-lg mb-6">
+            <p className="text-gray-700 text-center">
+              Votre profil freelance a été créé avec succès ! Commencez dès
+              maintenant à publier vos services.
+            </p>
+          </div>
+
+          {/* Actions */}
+          <div className="space-y-3">
+            {/* Publier un service maintenant */}
+            <button
+              onClick={handlePublishService}
+              className="w-full bg-green-600 hover:bg-green-700 text-white py-3 px-4 rounded-lg font-semibold transition-colors flex items-center justify-center"
+            >
+              <Plus className="mr-2" size={20} />
+              Publier un service maintenant
+            </button>
+
+            {/* Peut-être plus tard */}
+            <button
+              onClick={handleMaybeLater}
+              className="w-full bg-gray-200 hover:bg-gray-300 text-gray-700 py-3 px-4 rounded-lg font-medium transition-colors"
+            >
+              Peut-être plus tard
+            </button>
+
+            {/* Guide d'utilisation */}
+            <button
+              onClick={handleViewGuide}
+              className="w-full border-2 border-blue-500 text-blue-600 hover:bg-blue-50 py-3 px-4 rounded-lg font-medium transition-colors flex items-center justify-center"
+            >
+              <Globe className="mr-2" size={18} />
+              Comment utiliser Anylibre ?
+            </button>
+          </div>
+
+          {/* Footer info */}
+          <p className="text-xs text-gray-500 text-center mt-6">
+            Vous pouvez toujours publier des services plus tard depuis votre
+            tableau de bord
+          </p>
+        </div>
+      </div>
+    );
+  };
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-yellow-50 py-8">
+      <WelcomeModal />
       <div className="max-w-4xl mx-auto px-4">
         {/* Header avec progression */}
         <div className="bg-white rounded-lg shadow-lg p-6 mb-8">
@@ -695,9 +721,8 @@ const FreelanceRegistrationForm = () => {
           </div>
         </div>
 
-        {/* Contenu du formulaire */}
+        {/* Contenu du formulaire - ÉTAPE 1 */}
         <div className="bg-white rounded-lg shadow-lg p-8">
-          {/* Étape 1: Informations personnelles */}
           {currentStep === 1 && (
             <div className="space-y-6">
               <h2 className="text-2xl font-semibold text-gray-900 mb-8">
@@ -716,7 +741,7 @@ const FreelanceRegistrationForm = () => {
                     onChange={(e) =>
                       handleInputChange("firstName", e.target.value)
                     }
-                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 ${
+                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-yellow-500 ${
                       errors.firstName ? "border-red-500" : "border-gray-300"
                     }`}
                     placeholder="Votre prénom"
@@ -738,7 +763,7 @@ const FreelanceRegistrationForm = () => {
                     onChange={(e) =>
                       handleInputChange("lastName", e.target.value)
                     }
-                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 ${
+                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-yellow-500 ${
                       errors.lastName ? "border-red-500" : "border-gray-300"
                     }`}
                     placeholder="Votre nom"
@@ -766,7 +791,7 @@ const FreelanceRegistrationForm = () => {
                         e.target.value.toLowerCase().replace(/[^a-z0-9]/g, "")
                       )
                     }
-                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 ${
+                    className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-yellow-500 ${
                       errors.username ? "border-red-500" : "border-gray-300"
                     }`}
                     placeholder="nomutilisateur123"
@@ -791,42 +816,48 @@ const FreelanceRegistrationForm = () => {
                 </div>
               </div>
 
-              {/* Date de naissance et Localisation */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Date de naissance
-                  </label>
-                  <input
-                    type="date"
-                    value={formData.birthDate}
-                    onChange={(e) =>
-                      handleInputChange("birthDate", e.target.value)
-                    }
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500"
-                  />
-                </div>
+              {/* Date de naissance */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Date de naissance
+                </label>
+                <input
+                  type="date"
+                  value={formData.birthDate}
+                  onChange={(e) =>
+                    handleInputChange("birthDate", e.target.value)
+                  }
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-yellow-500"
+                />
+              </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Localisation *
-                  </label>
-                  <SearchableSelect
-                    options={locations}
-                    value={formData.location}
-                    onChange={(value) => handleInputChange("location", value)}
-                    placeholder="Sélectionner votre localisation"
-                    allowAdd={true}
-                    onAdd={(newLocation) => {
-                      setLocations((prev) => [...prev, newLocation]);
-                    }}
-                  />
-                  {errors.location && (
-                    <p className="text-red-500 text-sm mt-1">
-                      {errors.location}
-                    </p>
-                  )}
-                </div>
+              {/* Localisation */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Localisation *
+                </label>
+                <LocationSelect
+                  value={{
+                    pays: formData.pays,
+                    region: formData.region,
+                    ville: formData.ville,
+                    section: formData.section,
+                  }}
+                  onChange={(location) => {
+                    setFormData((prev) => ({
+                      ...prev,
+                      pays: location.pays,
+                      region: location.region,
+                      ville: location.ville,
+                      section: location.section,
+                    }));
+                  }}
+                  isDarkMode={false}
+                  required={true}
+                />
+                {errors.location && (
+                  <p className="text-red-500 text-sm mt-1">{errors.location}</p>
+                )}
               </div>
 
               {/* Photo de profil */}
@@ -871,10 +902,10 @@ const FreelanceRegistrationForm = () => {
                   }
                   rows={5}
                   maxLength={1000}
-                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 ${
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-yellow-500 ${
                     errors.description ? "border-red-500" : "border-gray-300"
                   }`}
-                  placeholder="Présentez-vous de manière professionnelle. Décrivez votre expertise, votre expérience et ce qui vous distingue des autres freelances..."
+                  placeholder="Présentez-vous de manière professionnelle..."
                 />
                 <div className="flex justify-between items-center mt-1">
                   {errors.description && (
@@ -894,7 +925,7 @@ const FreelanceRegistrationForm = () => {
                 </div>
               </div>
 
-              {/* Téléphone avec sélection de pays */}
+              {/* Téléphone */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Téléphone *
@@ -906,7 +937,7 @@ const FreelanceRegistrationForm = () => {
                       value={formData.phoneCountry}
                       onChange={(value) => {
                         handleInputChange("phoneCountry", value);
-                        handleInputChange("phone", ""); // Reset phone number when country changes
+                        handleInputChange("phone", "");
                       }}
                       placeholder="Sélectionner le pays"
                     />
@@ -927,7 +958,7 @@ const FreelanceRegistrationForm = () => {
                         type="tel"
                         value={formData.phone}
                         onChange={(e) => {
-                          const value = e.target.value.replace(/\D/g, ""); // Only digits
+                          const value = e.target.value.replace(/\D/g, "");
                           const maxLength = formData.phoneCountry
                             ? phoneCountries[formData.phoneCountry].digits
                             : 10;
@@ -935,7 +966,7 @@ const FreelanceRegistrationForm = () => {
                             handleInputChange("phone", value);
                           }
                         }}
-                        className={`flex-1 px-4 py-3 border rounded-r-lg focus:ring-2 focus:ring-yellow-500 focus:border-yellow-500 ${
+                        className={`flex-1 px-4 py-3 border rounded-r-lg focus:ring-2 focus:ring-yellow-500 ${
                           errors.phone ? "border-red-500" : "border-gray-300"
                         }`}
                         placeholder={
@@ -952,17 +983,11 @@ const FreelanceRegistrationForm = () => {
                         {errors.phone}
                       </p>
                     )}
-                    {formData.phoneCountry && (
-                      <p className="text-gray-500 text-sm mt-1">
-                        Format: {phoneCountries[formData.phoneCountry].code} +{" "}
-                        {phoneCountries[formData.phoneCountry].digits} chiffres
-                      </p>
-                    )}
                   </div>
                 </div>
               </div>
 
-              {/* Langues avec recherche */}
+              {/* Langues */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Langues parlées *
@@ -974,7 +999,7 @@ const FreelanceRegistrationForm = () => {
                       className="flex items-center bg-blue-100 text-blue-800 px-3 py-2 rounded-full"
                     >
                       <span className="text-sm">
-                        {lang.language} - {lang.level}
+                        {lang.langue} - {lang.niveau}
                       </span>
                       <button
                         onClick={() =>
@@ -1310,7 +1335,7 @@ const FreelanceRegistrationForm = () => {
                       className="flex items-center bg-purple-100 text-purple-800 px-3 py-2 rounded-full"
                     >
                       <span className="text-sm">
-                        {edu.university}, {edu.country} ({edu.year})
+                        {edu.universite}, {edu.pays} ({edu.annee})
                       </span>
                       <button
                         onClick={() =>
@@ -1394,7 +1419,7 @@ const FreelanceRegistrationForm = () => {
                       className="flex items-center bg-orange-100 text-orange-800 px-3 py-2 rounded-full"
                     >
                       <span className="text-sm">
-                        {cert.certificate} ({cert.year})
+                        {cert.nom} ({cert.annee})
                       </span>
                       <button
                         onClick={() =>
@@ -1550,7 +1575,7 @@ const FreelanceRegistrationForm = () => {
                       const websiteInput =
                         document.getElementById("websiteInput");
                       if (
-                        websiteInput.value &&
+                        websiteInput?.value &&
                         !formData.websites.includes(websiteInput.value)
                       ) {
                         setFormData((prev) => ({
@@ -1707,10 +1732,10 @@ const FreelanceRegistrationForm = () => {
             ) : (
               <button
                 onClick={handleSubmit}
-                disabled={isSubmitting}
+                disabled={isSubmitting || isLoading}
                 className="bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white px-8 py-3 rounded-lg font-medium transition-colors flex items-center"
               >
-                {isSubmitting ? (
+                {isSubmitting || isLoading ? (
                   <>
                     <Loader className="animate-spin mr-2" size={20} />
                     Finalisation en cours...
