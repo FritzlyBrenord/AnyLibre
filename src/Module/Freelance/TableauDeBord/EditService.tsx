@@ -1,10 +1,10 @@
 "use client";
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   ChevronRight,
   ChevronLeft,
   Check,
-  Play,
   Lightbulb,
   Info,
   Upload,
@@ -13,6 +13,8 @@ import {
   Save,
   AlertCircle,
   Loader2,
+  ArrowLeft,
+  Play,
 } from "lucide-react";
 import { useFreelances } from "@/Context/Freelance/FreelanceContext";
 import {
@@ -30,24 +32,7 @@ import {
 } from "@/Component/Data/Service/Service";
 import MarkdownEditor from "@/Component/Textarea/Textarea";
 
-// ==================== INTERFACES TYPESCRIPT ====================
-
-interface Subcategory {
-  label: string;
-  metadata: Array<{
-    id: string;
-    label: string;
-    type: string;
-    required: boolean;
-    options?: Array<{ value: string; label: string }>;
-  }>;
-}
-
-interface Category {
-  label: string;
-  subcategories: Record<string, Subcategory>;
-}
-
+// ==================== INTERFACES ====================
 interface LocalFormData {
   title: string;
   category: string;
@@ -62,7 +47,6 @@ interface LocalFormData {
   videoUrl: string;
   documents: ServiceDocument[];
 }
-
 interface VideoGuide {
   title: string;
   duration: string;
@@ -74,17 +58,21 @@ interface VideoGuides {
   [key: number]: VideoGuide;
 }
 
-// ==================== COMPOSANT PRINCIPAL ====================
+// ==================== COMPOSANT ====================
+const EditService: React.FC = () => {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const serviceId = searchParams.get("id");
 
-const AddServiceManagement: React.FC = () => {
   const [currentStep, setCurrentStep] = useState<number>(1);
-  const [serviceId, setServiceId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState<boolean>(false);
+  const [isLoadingService, setIsLoadingService] = useState<boolean>(true);
+  const [isDataLoaded, setIsDataLoaded] = useState<boolean>(false);
   const FREELANCE_ID = "3103d080-4199-4d68-801c-d60b7b5e82f9";
 
   const { getFreelanceById } = useFreelances();
   const {
-    ajouterService,
+    getServiceById,
     modifierService,
     uploadImage,
     deleteImage,
@@ -92,26 +80,20 @@ const AddServiceManagement: React.FC = () => {
     deleteDocument,
     uploadVideo,
     deleteVideo,
-    isLoading,
     isUploadingImage,
-    imageCompressionProgress,
     isUploadingDocument,
     isUploadingVideo,
     isCompressingVideo,
     videoCompressionProgress,
     videoUploadProgress,
     videoUploadStep,
-    error: contextError,
+    error: contextError, // Ajouter cette ligne
   } = useServices();
 
   const freelance = getFreelanceById(FREELANCE_ID);
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [videoPath, setVideoPath] = useState<string>("");
-  const [compressionStats, setCompressionStats] = useState<{
-    originalSize: number;
-    compressedSize: number;
-    compressionRate: number;
-  } | null>(null);
+  const [compressionStats, setCompressionStats] = useState<any>(null);
 
   const { selectedTags, addTag, removeTag } = serviceTags.useTagSelection(
     [],
@@ -125,7 +107,6 @@ const AddServiceManagement: React.FC = () => {
     if (!freelance?.occupations || freelance.occupations.length === 0) {
       return categoriesData;
     }
-
     const filtered = getCategoriesByOccupations(freelance.occupations);
     return Object.keys(filtered).length > 0 ? filtered : categoriesData;
   }, [freelance?.occupations]);
@@ -136,15 +117,7 @@ const AddServiceManagement: React.FC = () => {
     subcategory: "",
     metadata: {},
     tags: [],
-    packages: [
-      {
-        name: "Basic",
-        price: "",
-        deliveryDays: "",
-        revisions: "",
-        description: "",
-      },
-    ],
+    packages: [],
     description: "",
     faq: [],
     requirements: [],
@@ -160,50 +133,80 @@ const AddServiceManagement: React.FC = () => {
     { number: 4, title: "FAQ", icon: "❓" },
     { number: 5, title: "Exigences", icon: "📑" },
     { number: 6, title: "Galerie", icon: "🖼️" },
-    { number: 7, title: "Publier", icon: "🚀" },
+    { number: 7, title: "Aperçu", icon: "👁️" },
   ];
 
-  const videoGuides: VideoGuides = {
-    1: {
-      title: "Comment créer un titre accrocheur",
-      duration: "2:30",
-      thumbnail:
-        "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=400",
-      tips: [
-        "Utilisez des mots-clés pertinents",
-        "Soyez spécifique et clair",
-        "Mentionnez le résultat final",
-        "Maximum 80 caractères",
-      ],
-    },
-    2: {
-      title: "Définir vos forfaits de manière efficace",
-      duration: "3:45",
-      thumbnail:
-        "https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?w=400",
-      tips: [
-        "Offrez au moins 2 forfaits",
-        "Créez une différence claire entre les niveaux",
-        "Le forfait Premium doit offrir beaucoup plus de valeur",
-        "Prix compétitifs mais justes",
-      ],
-    },
-    3: {
-      title: "Rédiger une description qui convertit",
-      duration: "4:15",
-      thumbnail:
-        "https://images.unsplash.com/photo-1455390582262-044cdead277a?w=400",
-      tips: [
-        "Présentez votre expérience",
-        "Expliquez votre processus",
-        "Listez ce qui est inclus",
-        "Mentionnez vos garanties",
-      ],
-    },
-  };
+  // ==================== CHARGEMENT DU SERVICE ====================
+  useEffect(() => {
+    // Ne charger qu'une seule fois
+    if (isDataLoaded) return;
 
-  // ==================== VALIDATION DES ÉTAPES ====================
+    const loadService = async () => {
+      if (!serviceId) {
+        alert("⚠️ Aucun ID de service fourni");
+        router.push("/TableauDeBord");
+        return;
+      }
 
+      setIsLoadingService(true);
+
+      try {
+        const service = getServiceById(serviceId);
+
+        if (!service) {
+          alert("⚠️ Service introuvable");
+          router.push("/TableauDeBord");
+          return;
+        }
+
+        if (service.freelance_id !== FREELANCE_ID) {
+          alert("⚠️ Vous n'êtes pas autorisé à modifier ce service");
+          router.push("/TableauDeBord");
+          return;
+        }
+
+        // Pré-remplir le formulaire
+        setFormData({
+          title: service.title || "",
+          category: service.category || "",
+          subcategory: service.subcategory || "",
+          metadata: service.metadata || {},
+          tags: service.tags || [],
+          packages: service.packages || [],
+          description: service.description || "",
+          faq: service.faq || [],
+          requirements: service.requirements || [],
+          images: service.images || [],
+          videoUrl: service.video_url || "",
+          documents: service.documents || [],
+        });
+
+        // Pré-remplir les tags directement ici
+        if (service.tags && service.tags.length > 0) {
+          service.tags.forEach((tag) => {
+            if (!selectedTags.includes(tag)) {
+              addTag(tag);
+            }
+          });
+        }
+
+        if (service.video_path) {
+          setVideoPath(service.video_path);
+        }
+
+        setIsDataLoaded(true);
+        setIsLoadingService(false);
+      } catch (error) {
+        console.error("Erreur:", error);
+        alert("⚠️ Erreur lors du chargement du service");
+        router.push("/TableauDeBord");
+      }
+    };
+
+    loadService();
+  }, [serviceId, isDataLoaded]); // Dépendances minimales
+
+  // ==================== VALIDATION ====================
   const validateStep = (
     stepNumber: number
   ): { isValid: boolean; message: string } => {
@@ -306,119 +309,15 @@ const AddServiceManagement: React.FC = () => {
   };
 
   // ==================== HANDLERS ====================
-
-  const handleImageUpload = async (files: FileList) => {
-    const fileArray = Array.from(files);
-
-    if (fileArray.length + formData.images.length > 3) {
-      alert("Maximum 3 images autorisées");
-      return;
-    }
-
-    for (const file of fileArray) {
-      const result = await uploadImage(file, FREELANCE_ID);
-      if (result) {
-        setFormData({
-          ...formData,
-          images: [...formData.images, result],
-        });
-      }
-    }
-  };
-
-  const handleImageDelete = async (index: number) => {
-    const image = formData.images[index];
-    if (image.path) {
-      const success = await deleteImage(image.path);
-      if (success) {
-        setFormData({
-          ...formData,
-          images: formData.images.filter((_, i) => i !== index),
-        });
-      }
-    } else {
-      setFormData({
-        ...formData,
-        images: formData.images.filter((_, i) => i !== index),
-      });
-    }
-  };
-
-  const handleDocumentUpload = async (files: FileList) => {
-    const fileArray = Array.from(files);
-
-    if (fileArray.length + formData.documents.length > 2) {
-      alert("Maximum 2 documents autorisés");
-      return;
-    }
-
-    for (const file of fileArray) {
-      const result = await uploadDocument(file, FREELANCE_ID);
-      if (result) {
-        setFormData({
-          ...formData,
-          documents: [...formData.documents, result],
-        });
-      }
-    }
-  };
-
-  const handleDocumentDelete = async (index: number) => {
-    const document = formData.documents[index];
-    if (document.path) {
-      const success = await deleteDocument(document.path);
-      if (success) {
-        setFormData({
-          ...formData,
-          documents: formData.documents.filter((_, i) => i !== index),
-        });
-      }
-    } else {
-      setFormData({
-        ...formData,
-        documents: formData.documents.filter((_, i) => i !== index),
-      });
-    }
-  };
-
-  const handleVideoUpload = async (file: File) => {
-    if (videoPath) {
-      await deleteVideo(videoPath);
-    }
-
-    const result = await uploadVideo(file, FREELANCE_ID);
-
-    if (result) {
-      setFormData({
-        ...formData,
-        videoUrl: result.url,
-      });
-      setVideoPath(result.path);
-      setVideoFile(file);
-      setCompressionStats({
-        originalSize: result.originalSize,
-        compressedSize: result.compressedSize,
-        compressionRate: result.compressionRate,
-      });
-    } else {
-      alert(contextError || "Erreur lors de l'upload de la vidéo");
-    }
-  };
-
-  const handleVideoDelete = async () => {
-    if (videoPath) {
-      const success = await deleteVideo(videoPath);
-      if (success) {
-        setFormData({ ...formData, videoUrl: "" });
-        setVideoPath("");
-        setVideoFile(null);
-        setCompressionStats(null);
-      }
-    } else {
-      setFormData({ ...formData, videoUrl: "" });
-      setVideoFile(null);
-      setCompressionStats(null);
-    }
+  const getCurrentMetadata = () => {
+    if (!formData.category || !formData.subcategory) return [];
+    const category =
+      userCategories[formData.category as keyof typeof userCategories];
+    if (!category) return [];
+    const subcategory = category.subcategories[formData.subcategory] as {
+      metadata?: any[];
+    };
+    return subcategory?.metadata || [];
   };
 
   const handleCategoryChange = (categoryKey: string): void => {
@@ -448,145 +347,57 @@ const AddServiceManagement: React.FC = () => {
     });
   };
 
-  interface Metadata {
-    id: string;
-    label: string;
-    type: string;
-    required: boolean;
-    options?: { value: string; label: string }[];
-  }
-
-  interface Subcategory {
-    label: string;
-    metadata: Metadata[];
-  }
-
-  interface Category {
-    label: string;
-    subcategories: {
-      [key: string]: Subcategory;
-    };
-  }
-
-  const getCurrentMetadata = () => {
-    if (!formData.category || !formData.subcategory) return [];
-
-    const category = userCategories[
-      formData.category as keyof typeof userCategories
-    ] as Category;
-    if (!category) return [];
-
-    const subcategory = category.subcategories[formData.subcategory];
-    return subcategory?.metadata || [];
-  };
-
   const handleNext = async (): Promise<void> => {
     const validation = validateStep(currentStep);
-
     if (!validation.isValid) {
       alert(`⚠️ ${validation.message}`);
+      return;
+    }
+
+    if (!serviceId) {
+      alert("⚠️ ID du service introuvable");
       return;
     }
 
     try {
       setIsSaving(true);
 
-      // STEP 1: Créer le service (INSERT)
       if (currentStep === 1) {
-        const serviceData = {
-          freelance_id: FREELANCE_ID,
+        await modifierService(serviceId, {
           title: formData.title,
           category: formData.category,
           subcategory: formData.subcategory,
           metadata: formData.metadata,
           tags: selectedTags,
-          packages: [
-            {
-              name: "Basic",
-              price: "",
-              deliveryDays: "",
-              revisions: "",
-              description: "",
-            },
-          ],
-          description: "",
-          faq: [],
-          requirements: [],
-          images: [],
-          videoUrl: "",
-          videoPath: "",
-          documents: [],
-          statut: "en_attente" as const,
-        };
-
-        const nouveauService = await ajouterService(serviceData);
-
-        if (nouveauService) {
-          setServiceId(nouveauService.id);
-          setCurrentStep(currentStep + 1);
-          window.scrollTo({ top: 0, behavior: "smooth" });
-        } else {
-          throw new Error("Erreur lors de la création du service");
-        }
-      }
-      // STEP 2: Mettre à jour les forfaits
-      else if (currentStep === 2 && serviceId) {
-        await modifierService(serviceId, {
-          packages: formData.packages,
         });
-        setCurrentStep(currentStep + 1);
-        window.scrollTo({ top: 0, behavior: "smooth" });
-      }
-      // STEP 3: Mettre à jour la description
-      else if (currentStep === 3 && serviceId) {
-        await modifierService(serviceId, {
-          description: formData.description,
-        });
-        setCurrentStep(currentStep + 1);
-        window.scrollTo({ top: 0, behavior: "smooth" });
-      }
-      // STEP 4: Mettre à jour la FAQ
-      else if (currentStep === 4 && serviceId) {
+      } else if (currentStep === 2) {
+        await modifierService(serviceId, { packages: formData.packages });
+      } else if (currentStep === 3) {
+        await modifierService(serviceId, { description: formData.description });
+      } else if (currentStep === 4) {
         await modifierService(serviceId, {
           faq: formData.faq.map(({ isEditing, isOpen, ...faq }) => faq),
         });
-        setCurrentStep(currentStep + 1);
-        window.scrollTo({ top: 0, behavior: "smooth" });
-      }
-      // STEP 5: Mettre à jour les exigences
-      else if (currentStep === 5 && serviceId) {
+      } else if (currentStep === 5) {
         await modifierService(serviceId, {
           requirements: formData.requirements.map(
             ({ isEditing, isOpen, ...req }) => req
           ),
         });
-        setCurrentStep(currentStep + 1);
-        window.scrollTo({ top: 0, behavior: "smooth" });
-      }
-      // STEP 6: Mettre à jour la galerie
-      else if (currentStep === 6 && serviceId) {
+      } else if (currentStep === 6) {
         await modifierService(serviceId, {
           images: formData.images,
           videoUrl: formData.videoUrl,
           videoPath: videoPath,
           documents: formData.documents,
         });
-        setCurrentStep(currentStep + 1);
-        window.scrollTo({ top: 0, behavior: "smooth" });
       }
-      // STEP 7: Déjà sur la page de récapitulatif
-      else if (currentStep === 7) {
-        // Ne rien faire, on attend la publication
-      } else {
-        throw new Error("Service ID introuvable");
-      }
+
+      setCurrentStep(currentStep + 1);
+      window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (error) {
-      console.error("Erreur lors de l'enregistrement:", error);
-      alert(
-        error instanceof Error
-          ? error.message
-          : "Une erreur est survenue lors de l'enregistrement"
-      );
+      console.error("Erreur:", error);
+      alert(error instanceof Error ? error.message : "Une erreur est survenue");
     } finally {
       setIsSaving(false);
     }
@@ -599,55 +410,107 @@ const AddServiceManagement: React.FC = () => {
     }
   };
 
-  const handlePublishService = async (): Promise<void> => {
+  const handleSaveAndExit = async (): Promise<void> => {
     try {
       setIsSaving(true);
-
       if (!serviceId) {
         alert("Erreur : Service introuvable");
         return;
       }
 
-      // Activer le service
-      await modifierService(serviceId, {
-        statut: "actif" as const,
-      });
-
-      alert("🎉 Service publié avec succès !");
-
-      // Reset
-      setFormData({
-        title: "",
-        category: "",
-        subcategory: "",
-        metadata: {},
-        tags: [],
-        packages: [
-          {
-            name: "Basic",
-            price: "",
-            deliveryDays: "",
-            revisions: "",
-            description: "",
-          },
-        ],
-        description: "",
-        faq: [],
-        requirements: [],
-        images: [],
-        videoUrl: "",
-        documents: [],
-      });
-      setVideoPath("");
-      setVideoFile(null);
-      setCompressionStats(null);
-      setServiceId(null);
-      setCurrentStep(1);
+      await modifierService(serviceId, {});
+      alert("✅ Service modifié avec succès !");
+      router.push("/TableauDeBord");
     } catch (error) {
-      console.error("Erreur lors de la publication:", error);
-      alert("Une erreur est survenue lors de la publication du service.");
+      console.error("Erreur:", error);
+      alert("Une erreur est survenue");
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  // ==================== UPLOAD HANDLERS ====================
+  const handleImageUpload = async (files: FileList) => {
+    const fileArray = Array.from(files);
+    if (fileArray.length + formData.images.length > 3) {
+      alert("Maximum 3 images autorisées");
+      return;
+    }
+    for (const file of fileArray) {
+      const result = await uploadImage(file, FREELANCE_ID);
+      if (result) {
+        setFormData({ ...formData, images: [...formData.images, result] });
+      }
+    }
+  };
+
+  const handleImageDelete = async (index: number) => {
+    const image = formData.images[index];
+    if (image.path) {
+      const success = await deleteImage(image.path);
+      if (success) {
+        setFormData({
+          ...formData,
+          images: formData.images.filter((_, i) => i !== index),
+        });
+      }
+    }
+  };
+
+  const handleDocumentUpload = async (files: FileList) => {
+    const fileArray = Array.from(files);
+    if (fileArray.length + formData.documents.length > 2) {
+      alert("Maximum 2 documents");
+      return;
+    }
+    for (const file of fileArray) {
+      const result = await uploadDocument(file, FREELANCE_ID);
+      if (result) {
+        setFormData({
+          ...formData,
+          documents: [...formData.documents, result],
+        });
+      }
+    }
+  };
+
+  const handleDocumentDelete = async (index: number) => {
+    const document = formData.documents[index];
+    if (document.path) {
+      const success = await deleteDocument(document.path);
+      if (success) {
+        setFormData({
+          ...formData,
+          documents: formData.documents.filter((_, i) => i !== index),
+        });
+      }
+    }
+  };
+
+  const handleVideoUpload = async (file: File) => {
+    if (videoPath) await deleteVideo(videoPath);
+    const result = await uploadVideo(file, FREELANCE_ID);
+    if (result) {
+      setFormData({ ...formData, videoUrl: result.url });
+      setVideoPath(result.path);
+      setVideoFile(file);
+      setCompressionStats({
+        originalSize: result.originalSize,
+        compressedSize: result.compressedSize,
+        compressionRate: result.compressionRate,
+      });
+    }
+  };
+
+  const handleVideoDelete = async () => {
+    if (videoPath) {
+      const success = await deleteVideo(videoPath);
+      if (success) {
+        setFormData({ ...formData, videoUrl: "" });
+        setVideoPath("");
+        setVideoFile(null);
+        setCompressionStats(null);
+      }
     }
   };
 
@@ -655,19 +518,83 @@ const AddServiceManagement: React.FC = () => {
     return (bytes / (1024 * 1024)).toFixed(2);
   };
 
+  const videoGuides: VideoGuides = {
+    1: {
+      title: "Comment créer un titre accrocheur",
+      duration: "2:30",
+      thumbnail:
+        "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=400",
+      tips: [
+        "Utilisez des mots-clés pertinents",
+        "Soyez spécifique et clair",
+        "Mentionnez le résultat final",
+        "Maximum 80 caractères",
+      ],
+    },
+    2: {
+      title: "Définir vos forfaits de manière efficace",
+      duration: "3:45",
+      thumbnail:
+        "https://images.unsplash.com/photo-1554224155-8d04cb21cd6c?w=400",
+      tips: [
+        "Offrez au moins 2 forfaits",
+        "Créez une différence claire entre les niveaux",
+        "Le forfait Premium doit offrir beaucoup plus de valeur",
+        "Prix compétitifs mais justes",
+      ],
+    },
+    3: {
+      title: "Rédiger une description qui convertit",
+      duration: "4:15",
+      thumbnail:
+        "https://images.unsplash.com/photo-1455390582262-044cdead277a?w=400",
+      tips: [
+        "Présentez votre expérience",
+        "Expliquez votre processus",
+        "Listez ce qui est inclus",
+        "Mentionnez vos garanties",
+      ],
+    },
+  };
+
   const currentGuide: VideoGuide = videoGuides[currentStep] || videoGuides[1];
 
+  // ==================== LOADING STATE ====================
+  if (isLoadingService) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2
+            className="animate-spin mx-auto mb-4 text-blue-600"
+            size={48}
+          />
+          <p className="text-gray-600 text-lg">Chargement du service...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // ==================== RENDER ====================
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Progress Bar */}
+      {/* HEADER avec bouton retour */}
       <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between mb-4">
-            <h1 className="text-2xl font-bold text-gray-900">
-              Créer un nouveau service
-            </h1>
+            <div className="flex items-center gap-4">
+              <button
+                onClick={() => router.push("/TableauDeBord")}
+                className="text-gray-600 hover:text-gray-900 flex items-center"
+              >
+                <ArrowLeft size={20} className="mr-1" />
+                Retour
+              </button>
+              <h1 className="text-2xl font-bold text-gray-900">
+                Modifier le service
+              </h1>
+            </div>
             <button
-              onClick={() => window.history.back()}
+              onClick={() => router.push("/TableauDeBord")}
               className="text-gray-600 hover:text-gray-900 flex items-center"
             >
               <X size={20} className="mr-1" />
@@ -675,18 +602,18 @@ const AddServiceManagement: React.FC = () => {
             </button>
           </div>
 
-          {/* Steps */}
+          {/* Steps Progress */}
           <div className="flex items-center justify-between">
             {steps.map((step, index) => (
               <React.Fragment key={step.number}>
                 <div className="flex flex-col items-center flex-1">
                   <button
                     onClick={() => {
-                      if (step.number <= currentStep && serviceId) {
+                      if (step.number <= currentStep) {
                         setCurrentStep(step.number);
                       }
                     }}
-                    disabled={step.number > currentStep || !serviceId}
+                    disabled={step.number > currentStep}
                     className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg mb-2 transition-all ${
                       step.number < currentStep
                         ? "bg-green-600 text-white"
@@ -694,7 +621,7 @@ const AddServiceManagement: React.FC = () => {
                         ? "bg-blue-600 text-white ring-4 ring-blue-200"
                         : "bg-gray-200 text-gray-600"
                     } ${
-                      step.number > currentStep || !serviceId
+                      step.number > currentStep
                         ? "cursor-not-allowed"
                         : "cursor-pointer"
                     }`}
@@ -728,7 +655,6 @@ const AddServiceManagement: React.FC = () => {
         </div>
       </div>
 
-      {/* Main Content */}
       <div className="max-w-7xl mx-auto px-6 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Left Column - Form */}
@@ -949,9 +875,9 @@ const AddServiceManagement: React.FC = () => {
 
                     {selectedTags.length > 0 && (
                       <div className="flex flex-wrap gap-2 mb-3">
-                        {selectedTags.map((tag) => (
+                        {selectedTags.map((tag, index) => (
                           <span
-                            key={tag}
+                            key={index}
                             className="inline-flex items-center gap-1 px-3 py-1.5 bg-blue-100 text-blue-800 rounded-full text-sm font-medium"
                           >
                             {tag}
@@ -2777,65 +2703,8 @@ const AddServiceManagement: React.FC = () => {
                   </div>
                 </div>
               )}
-
-              {/* ==================== NAVIGATION BUTTONS ==================== */}
-              <div className="flex justify-between items-center mt-8 pt-6 border-t border-gray-200">
-                <button
-                  onClick={handlePrevious}
-                  disabled={currentStep === 1 || isSaving || isUploadingVideo}
-                  className="px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-semibold flex items-center"
-                >
-                  <ChevronLeft size={20} className="mr-1" />
-                  Précédent
-                </button>
-
-                {currentStep === steps.length ? (
-                  <button
-                    onClick={handlePublishService}
-                    disabled={isSaving || isUploadingVideo}
-                    className="px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors font-semibold flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {isSaving ? (
-                      <>
-                        <Loader2 className="animate-spin mr-2" size={20} />
-                        Publication...
-                      </>
-                    ) : (
-                      <>
-                        <Save size={20} className="mr-2" />
-                        Publier le service
-                      </>
-                    )}
-                  </button>
-                ) : (
-                  <button
-                    onClick={handleNext}
-                    disabled={
-                      isSaving || isUploadingVideo || !canProceedToNextStep()
-                    }
-                    className={`px-6 py-3 rounded-lg transition-colors font-semibold flex items-center ${
-                      canProceedToNextStep() && !isSaving
-                        ? "bg-blue-600 hover:bg-blue-700 text-white"
-                        : "bg-gray-300 text-gray-500 cursor-not-allowed"
-                    }`}
-                  >
-                    {isSaving ? (
-                      <>
-                        <Loader2 className="animate-spin mr-2" size={20} />
-                        Enregistrement...
-                      </>
-                    ) : (
-                      <>
-                        Enregistrer et Continuer
-                        <ChevronRight size={20} className="ml-1" />
-                      </>
-                    )}
-                  </button>
-                )}
-              </div>
             </div>
           </div>
-
           {/* Right Column */}
           <div className="lg:col-span-1">
             <div className="sticky top-24 space-y-6">
@@ -2911,8 +2780,65 @@ const AddServiceManagement: React.FC = () => {
           </div>
         </div>
       </div>
+      {/* Navigation Buttons */}
+      <div className="max-w-7xl mx-auto px-6 py-8">
+        <div className="bg-white rounded-lg p-6">
+          <div className="flex justify-between items-center">
+            <button
+              onClick={handlePrevious}
+              disabled={currentStep === 1 || isSaving}
+              className="px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed font-semibold flex items-center"
+            >
+              <ChevronLeft size={20} className="mr-1" />
+              Précédent
+            </button>
+
+            {currentStep === steps.length ? (
+              <button
+                onClick={handleSaveAndExit}
+                disabled={isSaving}
+                className="px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold flex items-center disabled:opacity-50"
+              >
+                {isSaving ? (
+                  <>
+                    <Loader2 className="animate-spin mr-2" size={20} />
+                    Sauvegarde...
+                  </>
+                ) : (
+                  <>
+                    <Save size={20} className="mr-2" />
+                    Sauvegarder et Quitter
+                  </>
+                )}
+              </button>
+            ) : (
+              <button
+                onClick={handleNext}
+                disabled={isSaving || !canProceedToNextStep()}
+                className={`px-6 py-3 rounded-lg font-semibold flex items-center ${
+                  canProceedToNextStep() && !isSaving
+                    ? "bg-blue-600 hover:bg-blue-700 text-white"
+                    : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                }`}
+              >
+                {isSaving ? (
+                  <>
+                    <Loader2 className="animate-spin mr-2" size={20} />
+                    Enregistrement...
+                  </>
+                ) : (
+                  <>
+                    Enregistrer et Continuer
+                    <ChevronRight size={20} className="ml-1" />
+                  </>
+                )}
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   );
 };
 
-export default AddServiceManagement;
+export default EditService;

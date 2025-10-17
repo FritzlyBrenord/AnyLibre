@@ -336,12 +336,12 @@ export default function FiverrStyleDashboard() {
                 <p className="text-sm text-gray-600">{userData.username}</p>
               </div>
             </div>
-            <a
-              href="/TableauDeBord/Edit"
-              className="w-full mt-8 gap-y-8 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 font-medium text-gray-700 text-sm lg:text-base"
+            <button
+              onClick={() => (window.location.href = "/TableauDeBord/edit")}
+              className="w-full  gap-y-8 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 font-medium text-gray-700 text-sm lg:text-base"
             >
               Voir le profil
-            </a>
+            </button>
           </div>
 
           {/* Aperçu des niveaux */}
