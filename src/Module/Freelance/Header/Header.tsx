@@ -11,10 +11,21 @@ import {
   Bell,
   HelpCircle,
   X,
+  LogOut,
+  Settings,
+  Home,
 } from "lucide-react";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useAuth } from "@/Context/ContextUser";
+import { useFreelances } from "@/Context/Freelance/FreelanceContext";
+import { useRouter } from "next/navigation";
 
 const Header = () => {
+  const router = useRouter();
+  const { currentSession, Logout } = useAuth();
+  const { getUserFreelance, getPhotoProfileUrl } = useFreelances();
+
+  // États pour les menus déroulants
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showMessages, setShowMessages] = useState(false);
@@ -23,7 +34,11 @@ const Header = () => {
   const [showMarketingMenu, setShowMarketingMenu] = useState(false);
   const [showAnalyticsMenu, setShowAnalyticsMenu] = useState(false);
 
-  // Notifications data
+  // Récupération des données de l'utilisateur connecté
+  const userId = currentSession?.userProfile?.id;
+  const freelanceData = userId ? getUserFreelance(userId) : false;
+
+  // Notifications factices (à remplacer par des données réelles)
   const notifications = [
     {
       id: 1,
@@ -64,7 +79,7 @@ const Header = () => {
     },
   ];
 
-  // Messages data
+  // Messages factices (à remplacer par des données réelles)
   const messages = [
     {
       id: 1,
@@ -95,18 +110,43 @@ const Header = () => {
   const unreadNotifications = notifications.filter((n) => !n.read).length;
   const unreadMessages = messages.filter((m) => m.unread).length;
 
+  // Données utilisateur basées sur le profil connecté ou générées par défaut
   const userData = {
-    name: "Brenord",
-    username: "@brenordfritzly",
-    avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Brenord",
-    level: "Niveau 0",
-    successScore: "-",
-    rating: "-",
-    responseRate: "-",
-    balance: 2847.5,
-    activeOrders: 0,
+    name: freelanceData
+      ? `${freelanceData.prenom} ${freelanceData.nom}`
+      : currentSession?.userProfile?.nom_utilisateur || "Utilisateur",
+    username: freelanceData
+      ? `@${freelanceData.username}`
+      : currentSession?.userProfile?.email || "@utilisateur",
+    avatar:
+      freelanceData && freelanceData.photo_url
+        ? getPhotoProfileUrl(freelanceData.photo_url)
+        : `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(
+            currentSession?.userProfile?.nom_utilisateur || "User"
+          )}`,
+    level: freelanceData ? "Niveau 1" : "Niveau 0",
+    successScore: freelanceData ? "100%" : "-",
+    rating: freelanceData ? "Nouveau" : "-",
+    responseRate: freelanceData ? "100%" : "-",
+    balance: 0, // À connecter avec une API de paiement réelle
+    activeOrders: 0, // À connecter avec une API de commandes réelle
     activeOrdersValue: 0,
-    email: "brenord@anylibre.com",
+    email: currentSession?.userProfile?.email || "utilisateur@anylibre.com",
+  };
+
+  // Fonction pour gérer la déconnexion
+  const handleLogout = async () => {
+    try {
+      await Logout();
+      router.push("/login");
+    } catch (error) {
+      console.error("Erreur de déconnexion:", error);
+    }
+  };
+
+  // Fonction pour passer au mode client
+  const switchToClientMode = () => {
+    router.push("/Accueil");
   };
 
   // Fermer tous les menus
@@ -147,15 +187,19 @@ const Header = () => {
                 </svg>
               </button>
 
-              <h1 className="text-xl lg:text-2xl font-bold text-green-600">
+              <h1
+                className="text-xl lg:text-2xl font-bold text-green-600 cursor-pointer"
+                onClick={() => router.push("/TableauDeBord")}
+              >
                 AnyLibre
               </h1>
 
               <nav className="hidden lg:flex items-center gap-1">
                 <a
-                  href="#"
-                  className="px-4 py-2 text-gray-700 hover:text-gray-900 font-semibold rounded-lg hover:bg-gray-50"
+                  href="/TableauDeBord"
+                  className="px-4 py-2 text-gray-700 hover:text-gray-900 font-semibold rounded-lg hover:bg-gray-50 flex items-center gap-1"
                 >
+                  <Home className="w-4 h-4" />
                   Tableau de bord
                 </a>
 
@@ -215,7 +259,7 @@ const Header = () => {
                         </div>
                       </a>
                       <a
-                        href="#"
+                        href="/TableauDeBord/edit"
                         className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 text-gray-700 hover:text-gray-900"
                       >
                         <User className="w-5 h-5 text-gray-500" />
@@ -227,7 +271,7 @@ const Header = () => {
                         </div>
                       </a>
                       <a
-                        href="#"
+                        href="/TableauDeBord/Revenu"
                         className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 text-gray-700 hover:text-gray-900"
                       >
                         <DollarSign className="w-5 h-5 text-gray-500" />
@@ -240,7 +284,7 @@ const Header = () => {
                       </a>
                       <div className="border-t border-gray-200 my-2"></div>
                       <a
-                        href="#"
+                        href="/TableauDeBord/Disponibilite"
                         className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 text-gray-700 hover:text-gray-900"
                       >
                         <Calendar className="w-5 h-5 text-gray-500" />
@@ -254,7 +298,7 @@ const Header = () => {
                         </div>
                       </a>
                       <a
-                        href="#"
+                        href="/TableauDeBord/Avis"
                         className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 text-gray-700 hover:text-gray-900"
                       >
                         <Star className="w-5 h-5 text-gray-500" />
@@ -289,7 +333,7 @@ const Header = () => {
                   {showMarketingMenu && (
                     <div className="absolute left-0 top-full mt-1 w-64 bg-white rounded-lg shadow-xl border border-gray-200 py-2 z-50">
                       <a
-                        href="#"
+                        href="/TableauDeBord/Croissance"
                         className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 text-gray-700 hover:text-gray-900"
                       >
                         <TrendingUp className="w-5 h-5 text-gray-500" />
@@ -303,7 +347,7 @@ const Header = () => {
                         </div>
                       </a>
                       <a
-                        href="#"
+                        href="/TableauDeBord/Promotion"
                         className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 text-gray-700 hover:text-gray-900"
                       >
                         <svg
@@ -329,7 +373,7 @@ const Header = () => {
                         </div>
                       </a>
                       <a
-                        href="#"
+                        href="/TableauDeBord/Tarifs"
                         className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 text-gray-700 hover:text-gray-900"
                       >
                         <svg
@@ -356,7 +400,7 @@ const Header = () => {
                       </a>
                       <div className="border-t border-gray-200 my-2"></div>
                       <a
-                        href="#"
+                        href="/TableauDeBord/Apprendre"
                         className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 text-gray-700 hover:text-gray-900"
                       >
                         <svg
@@ -380,7 +424,7 @@ const Header = () => {
                         </div>
                       </a>
                       <a
-                        href="#"
+                        href="/TableauDeBord/Demandes"
                         className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 text-gray-700 hover:text-gray-900"
                       >
                         <MessageSquare className="w-5 h-5 text-gray-500" />
@@ -417,7 +461,7 @@ const Header = () => {
                   {showAnalyticsMenu && (
                     <div className="absolute left-0 top-full mt-1 w-60 bg-white rounded-lg shadow-xl border border-gray-200 py-2 z-50">
                       <a
-                        href="#"
+                        href="/TableauDeBord/Analytique/Apercu"
                         className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 text-gray-700 hover:text-gray-900"
                       >
                         <svg
@@ -441,7 +485,7 @@ const Header = () => {
                         </div>
                       </a>
                       <a
-                        href="#"
+                        href="/TableauDeBord/Analytique/Performance"
                         className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 text-gray-700 hover:text-gray-900"
                       >
                         <svg
@@ -473,7 +517,7 @@ const Header = () => {
                         </div>
                       </a>
                       <a
-                        href="#"
+                        href="/TableauDeBord/Analytique/Revenus"
                         className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 text-gray-700 hover:text-gray-900"
                       >
                         <DollarSign className="w-5 h-5 text-gray-500" />
@@ -485,7 +529,7 @@ const Header = () => {
                         </div>
                       </a>
                       <a
-                        href="#"
+                        href="/TableauDeBord/Analytique/Clients"
                         className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 text-gray-700 hover:text-gray-900"
                       >
                         <svg
@@ -512,7 +556,7 @@ const Header = () => {
                       </a>
                       <div className="border-t border-gray-200 my-2"></div>
                       <a
-                        href="#"
+                        href="/TableauDeBord/Analytique/Rapports"
                         className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 text-gray-700 hover:text-gray-900"
                       >
                         <svg
@@ -801,13 +845,15 @@ const Header = () => {
                     {/* User Info Header */}
                     <div className="p-4 lg:p-6 border-b border-gray-200">
                       <div className="flex items-center gap-3 lg:gap-4 mb-3 lg:mb-4">
-                        <div className="relative flex-shrink-0">
-                          <img
-                            src={userData.avatar}
-                            alt={userData.name}
-                            className="w-12 h-12 lg:w-16 lg:h-16 rounded-full border-2 border-gray-200"
-                          />
-                          <div className="absolute bottom-0 right-0 w-3 h-3 lg:w-4 lg:h-4 bg-green-500 rounded-full border-2 border-white"></div>
+                        <div className="relative">
+                          <div className="w-20 h-20 rounded-full overflow-hidden border-4 border-gray-100 flex-shrink-0 relative">
+                            <img
+                              src={userData.avatar}
+                              alt={userData.name}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                          <div className="absolute bottom-2 right-0 w-3 h-3 lg:w-4 lg:h-4 bg-green-500 rounded-full border-2 border-white"></div>
                         </div>
                         <div className="flex-1 min-w-0">
                           <h3 className="font-bold text-gray-900 text-base lg:text-lg truncate">
@@ -820,7 +866,10 @@ const Header = () => {
                       </div>
 
                       {/* Switch to Buyer Mode Button */}
-                      <button className="w-full px-3 lg:px-4 py-2.5 lg:py-3 border-2 border-gray-900 text-gray-900 rounded-lg text-sm lg:text-base font-semibold hover:bg-gray-900 hover:text-white transition-all">
+                      <button
+                        className="w-full px-3 lg:px-4 py-2.5 lg:py-3 border-2 border-gray-900 text-gray-900 rounded-lg text-sm lg:text-base font-semibold hover:bg-gray-900 hover:text-white transition-all"
+                        onClick={switchToClientMode}
+                      >
                         Passer en mode client
                       </button>
                     </div>
@@ -828,34 +877,50 @@ const Header = () => {
                     {/* Menu Items */}
                     <div className="py-2">
                       <a
-                        href="#"
+                        href="/TableauDeBord/edit"
                         className="flex items-center px-6 py-3 hover:bg-gray-50 text-gray-700 hover:text-gray-900 transition-colors"
                       >
+                        <User className="w-5 h-5 mr-3 text-gray-500" />
                         <span className="text-base font-medium">Profil</span>
                       </a>
 
                       <a
-                        href="#"
+                        href="/Parrainage"
                         className="flex items-center px-6 py-3 hover:bg-gray-50 text-gray-700 hover:text-gray-900 transition-colors"
                       >
+                        <svg
+                          className="w-5 h-5 mr-3 text-gray-500"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                          />
+                        </svg>
                         <span className="text-base font-medium">
                           Parrainer un ami
                         </span>
                       </a>
 
                       <a
-                        href="#"
+                        href="/Parametres"
                         className="flex items-center px-6 py-3 hover:bg-gray-50 text-gray-700 hover:text-gray-900 transition-colors"
                       >
+                        <Settings className="w-5 h-5 mr-3 text-gray-500" />
                         <span className="text-base font-medium">
                           Paramètres du compte
                         </span>
                       </a>
 
                       <a
-                        href="#"
+                        href="/Facturation"
                         className="flex items-center px-6 py-3 hover:bg-gray-50 text-gray-700 hover:text-gray-900 transition-colors"
                       >
+                        <DollarSign className="w-5 h-5 mr-3 text-gray-500" />
                         <span className="text-base font-medium">
                           Facturation et paiements
                         </span>
@@ -911,7 +976,11 @@ const Header = () => {
 
                     {/* Logout */}
                     <div className="p-2">
-                      <button className="w-full text-left px-6 py-3 hover:bg-gray-50 text-gray-700 hover:text-gray-900 transition-colors">
+                      <button
+                        onClick={handleLogout}
+                        className="w-full flex items-center px-6 py-3 hover:bg-gray-50 text-gray-700 hover:text-gray-900 transition-colors"
+                      >
+                        <LogOut className="w-5 h-5 mr-3 text-gray-500" />
                         <span className="text-base font-medium">
                           Déconnexion
                         </span>
@@ -960,7 +1029,7 @@ const Header = () => {
               {/* Mobile Navigation */}
               <div className="space-y-2">
                 <a
-                  href="#"
+                  href="/TableauDeBord"
                   className="block px-4 py-3 text-gray-700 hover:bg-gray-50 rounded-lg font-semibold"
                 >
                   Tableau de bord
@@ -972,14 +1041,14 @@ const Header = () => {
                     Mon entreprise
                   </div>
                   <a
-                    href="#"
+                    href="/TableauDeBord/Order"
                     className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 rounded-lg"
                   >
                     <Package className="w-5 h-5 text-gray-500" />
                     <span className="text-sm font-medium">Commandes</span>
                   </a>
                   <a
-                    href="#"
+                    href="/TableauDeBord/Service"
                     className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 rounded-lg"
                   >
                     <svg
@@ -998,14 +1067,14 @@ const Header = () => {
                     <span className="text-sm font-medium">Services</span>
                   </a>
                   <a
-                    href="#"
+                    href="/TableauDeBord/edit"
                     className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 rounded-lg"
                   >
                     <User className="w-5 h-5 text-gray-500" />
                     <span className="text-sm font-medium">Profil</span>
                   </a>
                   <a
-                    href="#"
+                    href="/TableauDeBord/Revenu"
                     className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 rounded-lg"
                   >
                     <DollarSign className="w-5 h-5 text-gray-500" />
@@ -1019,14 +1088,14 @@ const Header = () => {
                     Croissance et marketing
                   </div>
                   <a
-                    href="#"
+                    href="/TableauDeBord/Croissance"
                     className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 rounded-lg"
                   >
                     <TrendingUp className="w-5 h-5 text-gray-500" />
                     <span className="text-sm font-medium">Vendeur Plus</span>
                   </a>
                   <a
-                    href="#"
+                    href="/TableauDeBord/Demandes"
                     className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 rounded-lg"
                   >
                     <MessageSquare className="w-5 h-5 text-gray-500" />
@@ -1042,7 +1111,7 @@ const Header = () => {
                     Analytique
                   </div>
                   <a
-                    href="#"
+                    href="/TableauDeBord/Analytique/Apercu"
                     className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 rounded-lg"
                   >
                     <svg
@@ -1061,12 +1130,33 @@ const Header = () => {
                     <span className="text-sm font-medium">Aperçu</span>
                   </a>
                   <a
-                    href="#"
+                    href="/TableauDeBord/Analytique/Revenus"
                     className="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 rounded-lg"
                   >
                     <DollarSign className="w-5 h-5 text-gray-500" />
                     <span className="text-sm font-medium">Revenus</span>
                   </a>
+                </div>
+
+                {/* Mode client et déconnexion */}
+                <div className="space-y-1 mt-6 pt-6 border-t border-gray-200">
+                  <button
+                    onClick={switchToClientMode}
+                    className="flex items-center gap-3 px-4 py-3 w-full text-left hover:bg-gray-50 rounded-lg"
+                  >
+                    <User className="w-5 h-5 text-gray-500" />
+                    <span className="text-sm font-medium">
+                      Passer en mode client
+                    </span>
+                  </button>
+
+                  <button
+                    onClick={handleLogout}
+                    className="flex items-center gap-3 px-4 py-3 w-full text-left hover:bg-gray-50 rounded-lg"
+                  >
+                    <LogOut className="w-5 h-5 text-gray-500" />
+                    <span className="text-sm font-medium">Déconnexion</span>
+                  </button>
                 </div>
               </div>
             </div>

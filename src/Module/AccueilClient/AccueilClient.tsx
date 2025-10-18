@@ -1,4 +1,3 @@
-// Composant Card de Service
 "use client";
 import React, { useState, useRef, useEffect } from "react";
 import {
@@ -17,6 +16,55 @@ import {
 } from "lucide-react";
 import { useFreelances } from "@/Context/Freelance/FreelanceContext";
 import { useServices } from "@/Context/Freelance/ContextService";
+import { useAuth } from "@/Context/ContextUser";
+import { useRouter } from "next/router";
+import { redirect } from "next/navigation";
+
+// Types définis
+interface ServiceImage {
+  id: string;
+  name: string;
+  url: string;
+  path: string;
+  type: string;
+}
+
+interface Seller {
+  name: string;
+  level: string;
+  isTopRated: boolean;
+  isOnline: boolean;
+  photo_url?: string;
+}
+
+interface Service {
+  id: string;
+  title: string;
+  description: string;
+  category: string;
+  price: number;
+  rating: number;
+  reviews: number;
+  images: ServiceImage[];
+  video_url?: string;
+  hasVideo?: boolean;
+  freelance_id: string;
+  seller: Seller;
+  badges: string[];
+}
+
+interface ServiceCardProps {
+  service: Service;
+  onFavorite: (serviceId: string) => void;
+  isFavorited: boolean;
+}
+
+interface CarouselProps {
+  title: string;
+  subtitle?: string;
+  services: Service[];
+  onSeeAll: () => void;
+}
 
 const categories = [
   "Développement Web",
@@ -29,46 +77,21 @@ const categories = [
   "Mobile Apps",
 ];
 
-// Types mis à jour
-interface Service {
-  id: string;
-  title: string;
-  description: string;
-  category: string;
-  price: number;
-  rating: number;
-  reviews: number;
-  images: Array<{
-    id: string;
-    name: string;
-    url: string;
-    path: string;
-    type: string;
-  }>;
-  video_url?: string;
-  hasVideo?: boolean;
-  freelance_id: string;
-  seller: {
-    name: string;
-    level: string;
-    isTopRated: boolean;
-    isOnline: boolean;
-    photo_url?: string;
-  };
-  badges: string[];
-}
-
 // Composant Card de Service amélioré
-const ServiceCard = ({ service, onFavorite, isFavorited }) => {
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [isHovered, setIsHovered] = useState(false);
-  const [currentMediaIndex, setCurrentMediaIndex] = useState(0);
-  const [showVideo, setShowVideo] = useState(true);
+const ServiceCard: React.FC<ServiceCardProps> = ({
+  service,
+  onFavorite,
+  isFavorited,
+}) => {
+  const [isPlaying, setIsPlaying] = useState<boolean>(false);
+  const [isHovered, setIsHovered] = useState<boolean>(false);
+  const [currentMediaIndex, setCurrentMediaIndex] = useState<number>(0);
+  const [showVideo, setShowVideo] = useState<boolean>(true);
   const videoRef = useRef<HTMLVideoElement>(null);
 
   // Préparer les médias: vidéo en premier si disponible, puis images
   const medias = React.useMemo(() => {
-    const mediaArray = [];
+    const mediaArray: Array<{ type: string; url: string; id: string }> = [];
 
     // Ajouter la vidéo en premier si disponible
     if (service.video_url) {
@@ -81,7 +104,7 @@ const ServiceCard = ({ service, onFavorite, isFavorited }) => {
 
     // Ajouter les images
     if (service.images && service.images.length > 0) {
-      service.images.forEach((image, index) => {
+      service.images.forEach((image: ServiceImage, index: number) => {
         mediaArray.push({
           type: "image",
           url: image.url,
@@ -111,7 +134,7 @@ const ServiceCard = ({ service, onFavorite, isFavorited }) => {
     }
   }, [isPlaying, showVideo, currentMediaIndex, service.video_url]);
 
-  const nextMedia = (e) => {
+  const nextMedia = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (currentMediaIndex === 0 && service.video_url && isPlaying) {
       setIsPlaying(false);
@@ -123,7 +146,7 @@ const ServiceCard = ({ service, onFavorite, isFavorited }) => {
     }
   };
 
-  const prevMedia = (e) => {
+  const prevMedia = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (currentMediaIndex === 0 && service.video_url && isPlaying) {
       setIsPlaying(false);
@@ -138,7 +161,7 @@ const ServiceCard = ({ service, onFavorite, isFavorited }) => {
     }
   };
 
-  const togglePlay = (e) => {
+  const togglePlay = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (currentMediaIndex === 0 && service.video_url) {
       setIsPlaying(!isPlaying);
@@ -146,7 +169,7 @@ const ServiceCard = ({ service, onFavorite, isFavorited }) => {
     }
   };
 
-  const switchToImages = (e) => {
+  const switchToImages = (e: React.MouseEvent) => {
     e.stopPropagation();
     setShowVideo(false);
     setIsPlaying(false);
@@ -156,7 +179,7 @@ const ServiceCard = ({ service, onFavorite, isFavorited }) => {
     }
   };
 
-  const switchToVideo = (e) => {
+  const switchToVideo = (e: React.MouseEvent) => {
     e.stopPropagation();
     setShowVideo(true);
     setCurrentMediaIndex(0);
@@ -236,10 +259,10 @@ const ServiceCard = ({ service, onFavorite, isFavorited }) => {
         {/* Indicateurs de carousel */}
         {hasMultipleMedias && (
           <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1 z-10">
-            {medias.map((_, index) => (
+            {medias.map((_, index: number) => (
               <button
                 key={index}
-                onClick={(e) => {
+                onClick={(e: React.MouseEvent) => {
                   e.stopPropagation();
                   if (
                     currentMediaIndex === 0 &&
@@ -296,9 +319,9 @@ const ServiceCard = ({ service, onFavorite, isFavorited }) => {
 
         {/* Bouton favori */}
         <button
-          onClick={(e) => {
+          onClick={(e: React.MouseEvent) => {
             e.stopPropagation();
-            onFavorite();
+            onFavorite(service.id);
           }}
           className="absolute top-3 right-3 w-9 h-9 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-white transition-colors shadow-md z-10"
         >
@@ -365,7 +388,7 @@ const ServiceCard = ({ service, onFavorite, isFavorited }) => {
         {/* Badges */}
         {service.badges.length > 0 && (
           <div className="flex flex-wrap gap-1 mb-3">
-            {service.badges.map((badge, index) => (
+            {service.badges.map((badge: string, index: number) => (
               <span
                 key={index}
                 className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded"
@@ -402,13 +425,18 @@ const ServiceCard = ({ service, onFavorite, isFavorited }) => {
     </div>
   );
 };
-// Composant Carousel
+
 // Composant Carousel amélioré
-const Carousel = ({ title, subtitle, services, onSeeAll }) => {
-  const scrollRef = useRef(null);
-  const [currentGroup, setCurrentGroup] = useState(0);
-  const [favorites, setFavorites] = useState(new Set());
-  const itemsPerGroup = 5;
+const Carousel: React.FC<CarouselProps> = ({
+  title,
+  subtitle,
+  services,
+  onSeeAll,
+}) => {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [currentGroup, setCurrentGroup] = useState<number>(0);
+  const [favorites, setFavorites] = useState<Set<string>>(new Set());
+  const itemsPerGroup = 4;
 
   // Calculer les groupes de services
   const totalGroups = Math.ceil(services.length / itemsPerGroup);
@@ -425,7 +453,7 @@ const Carousel = ({ title, subtitle, services, onSeeAll }) => {
     setCurrentGroup((prev) => (prev - 1 + totalGroups) % totalGroups);
   };
 
-  const toggleFavorite = (serviceId) => {
+  const toggleFavorite = (serviceId: string) => {
     setFavorites((prev) => {
       const newFavorites = new Set(prev);
       if (newFavorites.has(serviceId)) {
@@ -480,11 +508,11 @@ const Carousel = ({ title, subtitle, services, onSeeAll }) => {
 
         {/* Grille des services */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
-          {currentServices.map((service) => (
+          {currentServices.map((service: Service) => (
             <ServiceCard
               key={service.id}
               service={service}
-              onFavorite={() => toggleFavorite(service.id)}
+              onFavorite={toggleFavorite}
               isFavorited={favorites.has(service.id)}
             />
           ))}
@@ -504,7 +532,7 @@ const Carousel = ({ title, subtitle, services, onSeeAll }) => {
       {/* Indicateurs de groupe */}
       {totalGroups > 1 && (
         <div className="flex justify-center gap-2 mt-6">
-          {Array.from({ length: totalGroups }, (_, index) => (
+          {Array.from({ length: totalGroups }, (_, index: number) => (
             <button
               key={index}
               onClick={() => setCurrentGroup(index)}
@@ -523,15 +551,23 @@ const Carousel = ({ title, subtitle, services, onSeeAll }) => {
 
 // Composant principal
 export default function HomePage() {
-  const [searchTerm, setSearchTerm] = useState("");
+  const [searchTerm, setSearchTerm] = useState<string>("");
+
   const { services, isLoading, error } = useServices();
   const { freelances } = useFreelances();
+  const { currentSession } = useAuth();
+  const isLoggedIn =
+    currentSession.isAuthenticated && currentSession.userProfile;
+  // Récupérer le nom de l'utilisateur connecté
+  const userName = currentSession.userProfile?.nom_utilisateur || "Utilisateur";
 
   // Transformer les données du contexte pour correspondre à l'interface
   const transformedServices = React.useMemo(() => {
-    return services.map((service) => {
+    return services.map((service: any) => {
       // Trouver le freelance correspondant
-      const freelance = freelances.find((f) => f.id === service.freelance_id);
+      const freelance = freelances.find(
+        (f: any) => f.id === service.freelance_id
+      );
 
       return {
         id: service.id,
@@ -582,13 +618,13 @@ export default function HomePage() {
 
   // Filtrer les services par catégorie
   const developmentServices = transformedServices.filter(
-    (s) =>
+    (s: Service) =>
       s.category.toLowerCase().includes("développement") ||
       s.category.toLowerCase().includes("development")
   );
 
   const videoServices = transformedServices.filter(
-    (s) =>
+    (s: Service) =>
       s.category.toLowerCase().includes("vidéo") ||
       s.category.toLowerCase().includes("video")
   );
@@ -601,7 +637,7 @@ export default function HomePage() {
           <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-8">
             <div className="max-w-2xl">
               <h1 className="text-3xl md:text-4xl font-bold mb-4 leading-tight text-gray-900">
-                Bon retour, <span className="text-blue-600">Brenord</span> 👋
+                Bon retour, <span className="text-blue-600">{userName}</span> 👋
               </h1>
 
               <p className="text-xl text-gray-700 mb-8 leading-relaxed">
@@ -674,7 +710,7 @@ export default function HomePage() {
             Explorer par catégorie
           </h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {categories.map((category) => (
+            {categories.map((category: string) => (
               <button
                 key={category}
                 className="p-6 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors text-left group border border-gray-200"

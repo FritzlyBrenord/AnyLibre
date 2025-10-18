@@ -29,6 +29,7 @@ import {
   serviceTags,
 } from "@/Component/Data/Service/Service";
 import MarkdownEditor from "@/Component/Textarea/Textarea";
+import { useAuth } from "@/Context/ContextUser";
 
 // ==================== INTERFACES TYPESCRIPT ====================
 
@@ -80,9 +81,8 @@ const AddServiceManagement: React.FC = () => {
   const [currentStep, setCurrentStep] = useState<number>(1);
   const [serviceId, setServiceId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState<boolean>(false);
-  const FREELANCE_ID = "3103d080-4199-4d68-801c-d60b7b5e82f9";
 
-  const { getFreelanceById } = useFreelances();
+  const { getFreelanceById, getUserFreelance } = useFreelances();
   const {
     ajouterService,
     modifierService,
@@ -104,9 +104,21 @@ const AddServiceManagement: React.FC = () => {
     error: contextError,
   } = useServices();
 
+  const { currentSession } = useAuth();
+  const userId = currentSession?.userProfile?.id;
+
+  // Récupérer dynamiquement le freelance de l'utilisateur connecté
+  const freelances = userId ? getUserFreelance(userId) : false;
+  const FREELANCE_ID = (freelances && freelances.id) || "";
+
   const freelance = getFreelanceById(FREELANCE_ID);
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [videoPath, setVideoPath] = useState<string>("");
+  // États pour le suivi des téléchargements
+  const [isImageUploading, setIsImageUploading] = useState(false);
+  const [isDocumentUploading, setIsDocumentUploading] = useState(false);
+  const [imageUploadProgress, setImageUploadProgress] = useState(0);
+  const [documentUploadProgress, setDocumentUploadProgress] = useState(0);
   const [compressionStats, setCompressionStats] = useState<{
     originalSize: number;
     compressedSize: number;
@@ -307,7 +319,7 @@ const AddServiceManagement: React.FC = () => {
 
   // ==================== HANDLERS ====================
 
-  const handleImageUpload = async (files: FileList) => {
+  const handleImageUpload = async (files) => {
     const fileArray = Array.from(files);
 
     if (fileArray.length + formData.images.length > 3) {
@@ -315,14 +327,41 @@ const AddServiceManagement: React.FC = () => {
       return;
     }
 
-    for (const file of fileArray) {
-      const result = await uploadImage(file, FREELANCE_ID);
-      if (result) {
-        setFormData({
-          ...formData,
-          images: [...formData.images, result],
-        });
+    setIsImageUploading(true);
+    setImageUploadProgress(0);
+
+    // Variable pour suivre si l'upload a été annulé
+    let isCancelled = false;
+
+    // Exposer la fonction d'annulation
+    window.cancelCurrentImageUpload = () => {
+      isCancelled = true;
+    };
+
+    try {
+      for (let i = 0; i < fileArray.length; i++) {
+        // Mettre à jour la progression
+        setImageUploadProgress(Math.round((i / fileArray.length) * 100));
+
+        // Vérifier si l'utilisateur a annulé
+        if (isCancelled) break;
+
+        const result = await uploadImage(fileArray[i], FREELANCE_ID);
+
+        if (result && !isCancelled) {
+          setFormData({
+            ...formData,
+            images: [...formData.images, result],
+          });
+        }
       }
+    } catch (error) {
+      if (!isCancelled) {
+        console.error("Erreur lors de l'upload des images:", error);
+      }
+    } finally {
+      setIsImageUploading(false);
+      window.cancelCurrentImageUpload = null;
     }
   };
 
@@ -344,7 +383,7 @@ const AddServiceManagement: React.FC = () => {
     }
   };
 
-  const handleDocumentUpload = async (files: FileList) => {
+  const handleDocumentUpload = async (files) => {
     const fileArray = Array.from(files);
 
     if (fileArray.length + formData.documents.length > 2) {
@@ -352,14 +391,41 @@ const AddServiceManagement: React.FC = () => {
       return;
     }
 
-    for (const file of fileArray) {
-      const result = await uploadDocument(file, FREELANCE_ID);
-      if (result) {
-        setFormData({
-          ...formData,
-          documents: [...formData.documents, result],
-        });
+    setIsDocumentUploading(true);
+    setDocumentUploadProgress(0);
+
+    // Variable pour suivre si l'upload a été annulé
+    let isCancelled = false;
+
+    // Exposer la fonction d'annulation
+    window.cancelCurrentDocumentUpload = () => {
+      isCancelled = true;
+    };
+
+    try {
+      for (let i = 0; i < fileArray.length; i++) {
+        // Mettre à jour la progression
+        setDocumentUploadProgress(Math.round((i / fileArray.length) * 100));
+
+        // Vérifier si l'utilisateur a annulé
+        if (isCancelled) break;
+
+        const result = await uploadDocument(fileArray[i], FREELANCE_ID);
+
+        if (result && !isCancelled) {
+          setFormData({
+            ...formData,
+            documents: [...formData.documents, result],
+          });
+        }
       }
+    } catch (error) {
+      if (!isCancelled) {
+        console.error("Erreur lors de l'upload des documents:", error);
+      }
+    } finally {
+      setIsDocumentUploading(false);
+      window.cancelCurrentDocumentUpload = null;
     }
   };
 
@@ -381,14 +447,41 @@ const AddServiceManagement: React.FC = () => {
     }
   };
 
-  const handleVideoUpload = async (file: File) => {
+  const handleVideoUpload = async (file) => {
     if (videoPath) {
       await deleteVideo(videoPath);
     }
 
-    const result = await uploadVideo(file, FREELANCE_ID);
+    try {
+      // Variable qui sera utilisée pour vérifier si l'utilisateur a annulé
+      let isCancelled = false;
 
-    if (result) {
+      // Référence à la fonction d'annulation pour l'exposer
+      const cancelUpload = () => {
+        isCancelled = true;
+        // Mettre à jour l'interface pour montrer que l'annulation est en cours
+        setVideoUploadStep("cancelling");
+      };
+
+      // Exposer la fonction d'annulation
+      window.cancelCurrentVideoUpload = cancelUpload;
+
+      const result = await uploadVideo(file, FREELANCE_ID, {
+        onProgress: (progress) => {
+          // Cette fonction est appelée par le service pour mettre à jour la progression
+          if (isCancelled) return false; // Indique au service d'arrêter le traitement
+          return true; // Continue le traitement
+        },
+      });
+
+      // Nettoyer la référence globale
+      window.cancelCurrentVideoUpload = null;
+
+      // Si l'utilisateur a annulé ou s'il n'y a pas de résultat, sortir
+      if (isCancelled || !result) {
+        return;
+      }
+
       setFormData({
         ...formData,
         videoUrl: result.url,
@@ -400,7 +493,7 @@ const AddServiceManagement: React.FC = () => {
         compressedSize: result.compressedSize,
         compressionRate: result.compressionRate,
       });
-    } else {
+    } catch (error) {
       alert(contextError || "Erreur lors de l'upload de la vidéo");
     }
   };
@@ -2094,6 +2187,33 @@ const AddServiceManagement: React.FC = () => {
                         className="inline-block mt-4 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors cursor-pointer font-medium"
                       >
                         Parcourir les fichiers
+                        {isImageUploading && (
+                          <div className="mt-4 bg-blue-50 p-3 rounded-lg border border-blue-100">
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="flex items-center">
+                                <Loader2 className="w-5 h-5 text-blue-500 animate-spin mr-2" />
+                                <span className="font-medium text-blue-700">
+                                  Téléchargement en cours...
+                                </span>
+                              </div>
+                              <button
+                                onClick={() =>
+                                  window.cancelCurrentImageUpload &&
+                                  window.cancelCurrentImageUpload()
+                                }
+                                className="px-2 py-1 bg-red-100 text-red-600 rounded-md text-xs font-medium"
+                              >
+                                Annuler
+                              </button>
+                            </div>
+                            <div className="w-full bg-gray-200 rounded-full h-2">
+                              <div
+                                className="bg-blue-500 h-2 rounded-full transition-all duration-300"
+                                style={{ width: `${imageUploadProgress}%` }}
+                              ></div>
+                            </div>
+                          </div>
+                        )}
                       </label>
                     </div>
 
@@ -2213,7 +2333,7 @@ const AddServiceManagement: React.FC = () => {
                               <>
                                 <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600 mr-3"></div>
                                 <span className="font-semibold text-blue-900">
-                                  Upload vers Supabase...
+                                  Upload...
                                 </span>
                               </>
                             )}
@@ -2249,6 +2369,16 @@ const AddServiceManagement: React.FC = () => {
                                 }}
                               />
                             </div>
+                            <button
+                              onClick={() =>
+                                window.cancelCurrentVideoUpload &&
+                                window.cancelCurrentVideoUpload()
+                              }
+                              className="mt-2 px-3 py-1 bg-red-100 text-red-600 rounded-md text-sm font-medium flex items-center mx-auto"
+                            >
+                              <X className="w-4 h-4 mr-1" />
+                              Annuler la compression
+                            </button>
                           </div>
                         )}
 
@@ -2405,6 +2535,33 @@ const AddServiceManagement: React.FC = () => {
                         className="inline-block mt-4 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors cursor-pointer font-medium"
                       >
                         Parcourir les fichiers
+                        {isDocumentUploading && (
+                          <div className="mt-4 bg-blue-50 p-3 rounded-lg border border-blue-100">
+                            <div className="flex items-center justify-between mb-2">
+                              <div className="flex items-center">
+                                <Loader2 className="w-5 h-5 text-blue-500 animate-spin mr-2" />
+                                <span className="font-medium text-blue-700">
+                                  Téléchargement en cours...
+                                </span>
+                              </div>
+                              <button
+                                onClick={() =>
+                                  window.cancelCurrentDocumentUpload &&
+                                  window.cancelCurrentDocumentUpload()
+                                }
+                                className="px-2 py-1 bg-red-100 text-red-600 rounded-md text-xs font-medium"
+                              >
+                                Annuler
+                              </button>
+                            </div>
+                            <div className="w-full bg-gray-200 rounded-full h-2">
+                              <div
+                                className="bg-blue-500 h-2 rounded-full transition-all duration-300"
+                                style={{ width: `${documentUploadProgress}%` }}
+                              ></div>
+                            </div>
+                          </div>
+                        )}
                       </label>
                     </div>
 
@@ -2608,7 +2765,9 @@ const AddServiceManagement: React.FC = () => {
                             <div
                               className="prose prose-sm max-w-none"
                               dangerouslySetInnerHTML={{
-                                __html: formData.description,
+                                __html:
+                                  formData.description.substring(0, 100) +
+                                  "...",
                               }}
                             />
                           ) : (

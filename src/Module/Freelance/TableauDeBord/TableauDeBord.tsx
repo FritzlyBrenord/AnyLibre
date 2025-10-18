@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Search,
   Bell,
@@ -24,33 +24,70 @@ import {
   ArrowDownToLine,
   User,
   Settings,
+  AlertCircle,
 } from "lucide-react";
 import Header from "../Header/Header";
+import { useFreelances } from "@/Context/Freelance/FreelanceContext";
+import { useAuth } from "@/Context/ContextUser";
+import { useRouter } from "next/navigation";
 
 export default function FiverrStyleDashboard() {
+  const { currentSession } = useAuth();
+  const userId = currentSession?.userProfile?.id || "";
+  const { getUserFreelance, getPhotoProfileUrl } = useFreelances();
   const [showBalance, setShowBalance] = useState(true);
   const [withdrawModalOpen, setWithdrawModalOpen] = useState(false);
   const [paymentMethodModalOpen, setPaymentMethodModalOpen] = useState(false);
   const [showSidebar, setShowSidebar] = useState(false);
+  const router = useRouter();
 
+  // Récupérer les informations du freelance
+  const freelanceData = getUserFreelance(userId);
+
+  // // Rediriger vers la page d'inscription freelance si l'utilisateur n'est pas freelance
+  // useEffect(() => {
+  //   setTimeout(() => {
+  //     if (!userId) {
+  //       router.push("/login");
+  //       return;
+  //     }
+  //   }, 15000);
+  //   setTimeout(() => {
+  //     if (freelanceData === false) {
+  //       router.push("/devenir-freelance");
+  //     }
+  //   }, 15000);
+  // }, [userId, freelanceData, router]);
+
+  // Construire l'objet userData à partir des données du freelance
   const userData = {
-    name: "Brenord",
-    username: "@brenordfritzly",
-    avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Brenord",
-    level: "Niveau 0",
-    successScore: "-",
-    rating: "-",
-    responseRate: "-",
-    balance: 2847.5,
-    activeOrders: 0,
-    activeOrdersValue: 0,
+    name: freelanceData
+      ? `${freelanceData.prenom} ${freelanceData.nom}`
+      : currentSession?.userProfile?.nom_utilisateur || "Utilisateur",
+    username: freelanceData ? `@${freelanceData.username}` : "",
+    avatar:
+      freelanceData && freelanceData.photo_url
+        ? getPhotoProfileUrl(freelanceData.photo_url)
+        : `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(
+            currentSession?.userProfile?.nom_utilisateur || "User"
+          )}`,
+    level: freelanceData ? "Niveau 1" : "Niveau 0",
+    successScore: freelanceData ? "100%" : "-",
+    rating: freelanceData ? "Nouveau" : "-",
+    responseRate: freelanceData ? "100%" : "-",
+    balance: 0, // À connecter avec l'API de paiement dans une vraie application
+    activeOrders: 0, // À connecter avec l'API de commandes
+    activeOrdersValue: 0, // À connecter avec l'API de commandes
+    competences: freelanceData ? freelanceData.competences : [],
+    description: freelanceData ? freelanceData.description : "",
+    occupations: freelanceData ? freelanceData.occupations : [],
   };
 
   const [paymentMethods, setPaymentMethods] = useState([
     {
       id: 1,
       type: "PayPal",
-      email: "brenord@paypal.com",
+      email: `${userData.name.toLowerCase().replace(" ", ".")}@paypal.com`,
       verified: true,
       default: true,
       icon: "💳",
@@ -293,6 +330,42 @@ export default function FiverrStyleDashboard() {
     );
   };
 
+  // Si les données sont en cours de chargement ou l'utilisateur n'est pas connecté
+  if (!userId) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-green-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Chargement de votre profil...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Si l'utilisateur n'est pas un freelance, afficher un message
+  if (freelanceData === false) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-xl shadow-lg p-8 max-w-md w-full text-center">
+          <AlertCircle className="w-16 h-16 text-yellow-500 mx-auto mb-4" />
+          <h1 className="text-2xl font-bold mb-2">
+            Vous n'êtes pas encore freelance
+          </h1>
+          <p className="text-gray-600 mb-6">
+            Vous devez compléter votre inscription en tant que freelance pour
+            accéder à ce tableau de bord.
+          </p>
+          <button
+            onClick={() => router.push("/devenir-freelance")}
+            className="px-6 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition-colors"
+          >
+            Devenir freelance maintenant
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Main Layout - 2 colonnes comme Fiverr */}
@@ -338,7 +411,7 @@ export default function FiverrStyleDashboard() {
             </div>
             <button
               onClick={() => (window.location.href = "/TableauDeBord/edit")}
-              className="w-full  gap-y-8 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 font-medium text-gray-700 text-sm lg:text-base"
+              className="w-full mt-4 gap-y-8 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 font-medium text-gray-700 text-sm lg:text-base"
             >
               Voir le profil
             </button>
@@ -474,6 +547,22 @@ export default function FiverrStyleDashboard() {
               </button>
             </div>
 
+            {/* Services / Occupations */}
+            {userData.occupations && userData.occupations.length > 0 && (
+              <div className="bg-white border border-gray-200 rounded-lg p-4 lg:p-6 mb-6">
+                <h3 className="text-lg font-bold text-gray-900 mb-3">
+                  Vos services
+                </h3>
+                <ul className="list-disc pl-5 space-y-1">
+                  {userData.occupations.map((occupation, index) => (
+                    <li key={index} className="text-gray-700">
+                      {occupation}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
             {/* Promo Card */}
             <div className="bg-white border border-gray-200 rounded-lg p-4 lg:p-6 mb-6 lg:mb-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 hover:shadow-lg transition-shadow">
               <div className="flex-1">
@@ -503,7 +592,7 @@ export default function FiverrStyleDashboard() {
                     Commandes actives
                   </h2>
                   <span className="text-sm lg:text-base text-gray-600">
-                    - {userData.activeOrders} ({userData.activeOrdersValue} $)
+                    - {userData.activeOrders} ({userData.activeOrdersValue} €)
                   </span>
                 </div>
                 <button className="flex items-center gap-2 px-3 lg:px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 text-xs lg:text-sm font-medium whitespace-nowrap">

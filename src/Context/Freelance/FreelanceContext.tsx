@@ -14,6 +14,10 @@ import {
   DeleteData,
   DataExsite,
 } from "@/Config/SupabaseData";
+import { supabase } from "@/Config/supabase";
+
+// Constantes
+const STORAGE_BUCKET = "photo_freelance";
 
 // ==================== TYPES ====================
 
@@ -40,6 +44,7 @@ export interface Certification {
 
 export interface Freelance {
   id: string;
+  id_user: string; // Relation avec la table users
   code: string;
   nom: string;
   prenom: string;
@@ -53,7 +58,7 @@ export interface Freelance {
   section: string;
   date_naissance?: string;
   genre?: string;
-  photo_url?: string;
+  photo_url?: string; // URL de la photo stockée dans Supabase Storage
   description: string;
 
   // Professionnel
@@ -78,6 +83,7 @@ export interface Freelance {
 }
 
 export interface FreelanceFormData {
+  id_user: string; // ID de l'utilisateur dans la table users
   nom: string;
   prenom: string;
   username: string;
@@ -124,9 +130,19 @@ export interface FreelancesContextType {
   desactiverFreelance: (id: string) => Promise<void>;
   suspendreFreelance: (id: string) => Promise<void>;
 
+  // Gestion des photos de profil
+  uploadPhotoProfile: (
+    freelanceId: string,
+    file: File
+  ) => Promise<{ success: boolean; url?: string; error?: string }>;
+  supprimerPhotoProfile: (freelanceId: string) => Promise<boolean>;
+  getPhotoProfileUrl: (photoPath: string) => string;
+
   // Utilitaires
   rechercherFreelances: (terme: string) => Freelance[];
   getFreelanceById: (id: string) => Freelance | undefined;
+  getFreelanceByUserId: (userId: string) => Freelance | undefined;
+  getUserFreelance: (userId: string) => Freelance | false; // Nouvelle fonction
   genererNouveauCode: (nom?: string, prenom?: string) => Promise<string>;
   rechargerFreelances: () => Promise<void>;
 }
@@ -198,12 +214,159 @@ export const FreelancesProvider: React.FC<FreelancesProviderProps> = ({
     return `FL${initialNom}${initialPrenom}${rand1}_${rand2Str}`;
   };
 
+  // ==================== GESTION DES PHOTOS DE PROFIL ====================
+
+  // Fonction pour uploader une photo de profil
+  const uploadPhotoProfile = async (
+    freelanceId: string,
+    file: File
+  ): Promise<{ success: boolean; url?: string; error?: string }> => {
+    try {
+      setIsLoading(true);
+
+      // Vérifier si le freelance existe
+      const freelance = getFreelanceById(freelanceId);
+      if (!freelance) {
+        return {
+          success: false,
+          error: "Freelance introuvable",
+        };
+      }
+
+      // Générer un nom de fichier unique
+      const fileExt = file.name.split(".").pop();
+      const fileName = `${freelanceId}_${Date.now()}.${fileExt}`;
+      const filePath = `${freelanceId}/${fileName}`;
+
+      // Si une photo existe déjà, la supprimer
+      if (freelance.photo_url) {
+        await supprimerPhotoProfile(freelanceId);
+      }
+
+      // Upload du fichier
+      const { data, error: uploadError } = await supabase.storage
+        .from(STORAGE_BUCKET)
+        .upload(filePath, file, {
+          cacheControl: "3600",
+          upsert: false,
+        });
+
+      if (uploadError) {
+        throw new Error(uploadError.message);
+      }
+
+      // Obtenir l'URL publique
+      const { data: urlData } = supabase.storage
+        .from(STORAGE_BUCKET)
+        .getPublicUrl(filePath);
+
+      // Mettre à jour l'URL de la photo dans la base de données
+      await UpdateData("freelances", freelanceId, {
+        photo_url: filePath,
+        updated_at: new Date().toISOString(),
+      });
+
+      // Recharger les données
+      await rechargerFreelances();
+
+      return {
+        success: true,
+        url: urlData.publicUrl,
+      };
+    } catch (e: unknown) {
+      const errorMessage: string =
+        e instanceof Error ? e.message : "Erreur lors de l'upload de la photo";
+      setError(errorMessage);
+      console.error("Erreur uploadPhotoProfile:", e);
+
+      return {
+        success: false,
+        error: errorMessage,
+      };
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Fonction pour supprimer une photo de profil
+  const supprimerPhotoProfile = async (
+    freelanceId: string
+  ): Promise<boolean> => {
+    try {
+      setIsLoading(true);
+
+      // Vérifier si le freelance existe
+      const freelance = getFreelanceById(freelanceId);
+      if (!freelance || !freelance.photo_url) {
+        return true; // Rien à supprimer
+      }
+
+      // Supprimer le fichier du stockage
+      const { error: deleteError } = await supabase.storage
+        .from(STORAGE_BUCKET)
+        .remove([freelance.photo_url]);
+
+      if (deleteError) {
+        throw new Error(deleteError.message);
+      }
+
+      // Mettre à jour l'URL de la photo dans la base de données
+      await UpdateData("freelances", freelanceId, {
+        photo_url: null,
+        updated_at: new Date().toISOString(),
+      });
+
+      // Recharger les données
+      await rechargerFreelances();
+
+      return true;
+    } catch (e: unknown) {
+      const errorMessage: string =
+        e instanceof Error
+          ? e.message
+          : "Erreur lors de la suppression de la photo";
+      setError(errorMessage);
+      console.error("Erreur supprimerPhotoProfile:", e);
+
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Fonction pour obtenir l'URL publique d'une photo
+  const getPhotoProfileUrl = (photoPath: string): string => {
+    if (!photoPath) return "";
+
+    const { data } = supabase.storage
+      .from(STORAGE_BUCKET)
+      .getPublicUrl(photoPath);
+
+    return data.publicUrl;
+  };
+
   // ==================== AJOUTER FREELANCE ====================
 
   const ajouterFreelance = async (data: FreelanceFormData): Promise<void> => {
     try {
       setIsLoading(true);
       setError(null);
+
+      // Vérifier si l'ID utilisateur est fourni
+      if (!data.id_user) {
+        throw new Error("L'ID de l'utilisateur est requis");
+      }
+
+      // Vérifier si l'utilisateur est déjà freelance
+      const userFreelanceExists: boolean = await DataExsite(
+        "freelances",
+        "id_user",
+        data.id_user
+      );
+
+      if (userFreelanceExists) {
+        throw new Error("Cet utilisateur est déjà enregistré comme freelance");
+      }
 
       // Vérifier si l'email existe déjà
       const emailExists: boolean = await DataExsite(
@@ -236,6 +399,7 @@ export const FreelancesProvider: React.FC<FreelancesProviderProps> = ({
       // Préparer les données
       const freelanceData: Omit<Freelance, "id" | "created_at" | "updated_at"> =
         {
+          id_user: data.id_user,
           code,
           nom: data.nom,
           prenom: data.prenom,
@@ -373,6 +537,13 @@ export const FreelancesProvider: React.FC<FreelancesProviderProps> = ({
       setIsLoading(true);
       setError(null);
 
+      // Récupérer le freelance pour voir s'il a une photo
+      const freelance = getFreelanceById(id);
+      if (freelance && freelance.photo_url) {
+        // Supprimer la photo de profil avant de supprimer le freelance
+        await supprimerPhotoProfile(id);
+      }
+
       const ok: boolean = await DeleteData("freelances", id);
 
       if (!ok) {
@@ -488,6 +659,22 @@ export const FreelancesProvider: React.FC<FreelancesProviderProps> = ({
     return freelances.find((f: Freelance) => f.id === id);
   };
 
+  const getFreelanceByUserId = (userId: string): Freelance | undefined => {
+    return freelances.find((f: Freelance) => f.id_user === userId);
+  };
+
+  // Nouvelle fonction pour vérifier si un utilisateur est freelance
+  const getUserFreelance = (userId: string): Freelance | false => {
+    if (!userId) return false;
+
+    const freelance = freelances.find(
+      (f: Freelance) =>
+        f.id_user === userId && f.statut === "actif" && !f.isdeleted
+    );
+
+    return freelance || false;
+  };
+
   // ==================== EFFET INITIAL ====================
 
   useEffect(() => {
@@ -509,8 +696,13 @@ export const FreelancesProvider: React.FC<FreelancesProviderProps> = ({
     activerFreelance,
     desactiverFreelance,
     suspendreFreelance,
+    uploadPhotoProfile,
+    supprimerPhotoProfile,
+    getPhotoProfileUrl,
     rechercherFreelances,
     getFreelanceById,
+    getFreelanceByUserId,
+    getUserFreelance, // Nouvelle fonction ajoutée
     genererNouveauCode,
     rechargerFreelances,
   };

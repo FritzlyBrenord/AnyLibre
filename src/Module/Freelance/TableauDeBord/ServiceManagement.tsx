@@ -27,6 +27,8 @@ import {
   StatutService,
 } from "@/Context/Freelance/ContextService";
 import { redirect } from "next/navigation";
+import { useAuth } from "@/Context/ContextUser";
+import { useFreelances } from "@/Context/Freelance/FreelanceContext";
 
 // ==================== INTERFACES ====================
 
@@ -594,8 +596,6 @@ const DetailModal: React.FC<DetailModalProps> = ({
 // ==================== COMPOSANT PRINCIPAL ====================
 
 const ServiceList: React.FC = () => {
-  const FREELANCE_ID = "3103d080-4199-4d68-801c-d60b7b5e82f9";
-
   const {
     services,
     isLoading,
@@ -613,6 +613,14 @@ const ServiceList: React.FC = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
 
+  const { currentSession } = useAuth();
+  const userId = currentSession?.userProfile?.id;
+
+  const { getUserFreelance } = useFreelances();
+
+  // Récupérer dynamiquement le freelance de l'utilisateur connecté
+  const freelance = userId ? getUserFreelance(userId) : false;
+  const FREELANCE_ID = freelance && freelance.id;
   const ITEMS_PER_PAGE = 6;
 
   const tabs = [

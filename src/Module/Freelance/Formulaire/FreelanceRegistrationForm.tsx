@@ -30,6 +30,8 @@ import {
   type Formation,
   type Certification,
 } from "@/Context/Freelance/FreelanceContext";
+import WelcomeModal from "../Modal/ModdalWelcome";
+import { useAuth } from "@/Context/ContextUser";
 
 // ==================== TYPES ====================
 
@@ -176,14 +178,17 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
 const FreelanceRegistrationForm: React.FC = () => {
   const router = useRouter();
   const { ajouterFreelance, isLoading } = useFreelances();
+  const { currentSession } = useAuth();
+  const userName = currentSession.userProfile?.nom_utilisateur || "";
+  const email_user = currentSession.userProfile?.email || "";
 
   const [currentStep, setCurrentStep] = useState<number>(1);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
-  const [showWelcomeModal, setShowWelcomeModal] = useState<boolean>(true);
+  const [showWelcomeModal, setShowWelcomeModal] = useState<boolean>(false);
   const [formData, setFormData] = useState<FormDataType>({
     firstName: "",
     lastName: "",
-    username: "",
+    username: userName,
     profilePhoto: null,
     description: "",
     phone: "",
@@ -202,7 +207,7 @@ const FreelanceRegistrationForm: React.FC = () => {
     education: [],
     certifications: [],
     websites: [],
-    email: "",
+    email: email_user,
     phoneVerified: false,
     emailVerified: false,
   });
@@ -553,6 +558,7 @@ const FreelanceRegistrationForm: React.FC = () => {
         certifications: formData.certifications,
         sites_web: formData.websites,
         statut: "actif" as const,
+        id_user: currentSession.user.id,
       };
 
       await ajouterFreelance(dataToSubmit);
@@ -581,74 +587,14 @@ const FreelanceRegistrationForm: React.FC = () => {
   };
 
   // Modal de Bienvenue
-  const WelcomeModal = () => {
-    if (!showWelcomeModal) return null;
 
-    return (
-      <div className="fixed inset-0 bg-green-400 bg-opacity-50 flex items-center justify-center z-50 p-4">
-        <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 animate-fade-in">
-          {/* Header avec icône de succès */}
-          <div className="text-center mb-6">
-            <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Check className="text-green-600" size={40} />
-            </div>
-            <h2 className="text-3xl font-bold text-gray-900 mb-2">
-              Bienvenue sur Anylibre ! 🎉
-            </h2>
-            <p className="text-xl text-gray-700 font-medium">
-              {formData.firstName} {formData.lastName}
-            </p>
-          </div>
-
-          {/* Message */}
-          <div className="bg-blue-50 p-4 rounded-lg mb-6">
-            <p className="text-gray-700 text-center">
-              Votre profil freelance a été créé avec succès ! Commencez dès
-              maintenant à publier vos services.
-            </p>
-          </div>
-
-          {/* Actions */}
-          <div className="space-y-3">
-            {/* Publier un service maintenant */}
-            <button
-              onClick={handlePublishService}
-              className="w-full bg-green-600 hover:bg-green-700 text-white py-3 px-4 rounded-lg font-semibold transition-colors flex items-center justify-center"
-            >
-              <Plus className="mr-2" size={20} />
-              Publier un service maintenant
-            </button>
-
-            {/* Peut-être plus tard */}
-            <button
-              onClick={handleMaybeLater}
-              className="w-full bg-gray-200 hover:bg-gray-300 text-gray-700 py-3 px-4 rounded-lg font-medium transition-colors"
-            >
-              Peut-être plus tard
-            </button>
-
-            {/* Guide d'utilisation */}
-            <button
-              onClick={handleViewGuide}
-              className="w-full border-2 border-blue-500 text-blue-600 hover:bg-blue-50 py-3 px-4 rounded-lg font-medium transition-colors flex items-center justify-center"
-            >
-              <Globe className="mr-2" size={18} />
-              Comment utiliser Anylibre ?
-            </button>
-          </div>
-
-          {/* Footer info */}
-          <p className="text-xs text-gray-500 text-center mt-6">
-            Vous pouvez toujours publier des services plus tard depuis votre
-            tableau de bord
-          </p>
-        </div>
-      </div>
-    );
-  };
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-yellow-50 py-8">
-      <WelcomeModal />
+      <WelcomeModal
+        formData={formData}
+        showWelcomeModal={showWelcomeModal}
+        setShowWelcomeModal={setShowWelcomeModal}
+      />
       <div className="max-w-4xl mx-auto px-4">
         {/* Header avec progression */}
         <div className="bg-white rounded-lg shadow-lg p-6 mb-8">

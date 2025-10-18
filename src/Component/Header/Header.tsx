@@ -77,7 +77,10 @@ const Header = () => {
 
               <div className="h-6 w-px bg-gray-200"></div>
 
-              <button className="text-gray-700 hover:text-green-600 transition-colors font-medium">
+              <button
+                onClick={() => (window.location.href = "/Authentification")}
+                className="text-gray-700 hover:text-green-600 transition-colors font-medium"
+              >
                 Connexion
               </button>
               <button className="bg-green-600 text-white px-6 py-2.5 rounded-full hover:bg-green-700 transition-all hover:shadow-lg font-medium">

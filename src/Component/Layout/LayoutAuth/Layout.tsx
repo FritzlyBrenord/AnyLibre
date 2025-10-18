@@ -1,18 +1,16 @@
 import React from "react";
-import Header from "../Header/Header";
-import Footer from "../Header/Footer/Footer";
-import HeaderAuth from "../Header/HeaderAuth";
+
 import { useAuth } from "@/Context/ContextUser";
+import HeaderAuth from "@/Component/Header/HeaderAuth";
+import Footer from "@/Component/Header/Footer/Footer";
 
 interface Props {
   children?: React.ReactNode;
   showHeaderSearchEtcategory?: boolean;
 }
-const Layout = ({ children, showHeaderSearchEtcategory }: Props) => {
+const LayoutAuth = ({ children, showHeaderSearchEtcategory }: Props) => {
   return (
     <div className="overflow-hidden">
-      <Header show={true} />
-
       <HeaderAuth />
 
       {children}
@@ -22,4 +20,4 @@ const Layout = ({ children, showHeaderSearchEtcategory }: Props) => {
   );
 };
 
-export default Layout;
+export default LayoutAuth;

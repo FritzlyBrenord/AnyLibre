@@ -1,4 +1,5 @@
 import { supabase } from "@/Config/supabase";
+import { RealtimeChannel } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 
 export const DataExsite = async (table: string, column: string, value: any) => {
@@ -527,4 +528,38 @@ export const UpdatePassword = async (newValeur: string) => {
       return false;
     }
   } catch (error) {}
+};
+
+// Fonction pour s'abonner aux changements d'une table
+export const SubscribeToTable = (
+  table: string,
+  channelName: string,
+  filters: { event: string; filter?: string },
+  callback: (payload: any) => void
+) => {
+  try {
+    const subscription = supabase
+      .channel(channelName)
+      .on(
+        "postgres_changes",
+        {
+          event: filters.event as any,
+          schema: "public",
+          table: table,
+          filter: filters.filter,
+        },
+        callback
+      )
+      .subscribe();
+
+    return subscription;
+  } catch (error) {
+    console.error(`Erreur d'abonnement à la table ${table}:`, error);
+    return null;
+  }
+};
+
+// Fonction pour se désabonner
+export const UnsubscribeFromChannel = (channel: RealtimeChannel) => {
+  supabase.removeChannel(channel);
 };

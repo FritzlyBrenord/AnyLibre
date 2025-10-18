@@ -22,15 +22,30 @@ import {
   Clock,
   Eye,
   Heart,
+  Camera,
+  Upload,
 } from "lucide-react";
 import { useFreelances } from "@/Context/Freelance/FreelanceContext";
+import { useAuth } from "@/Context/ContextUser";
 import AIPersonalAssistant from "@/Component/GenerateProfil/GenerateProfil";
 import Header from "../Header/Header";
+import { useRouter } from "next/navigation";
 
 const FreelanceProfileEditor = () => {
-  const FREELANCE_ID = "b2e12841-fe5f-4a59-a3bc-7bbfdde37386";
-  const { getFreelanceById, modifierFreelance, isLoading } = useFreelances();
-  const freelance = getFreelanceById(FREELANCE_ID);
+  const router = useRouter();
+  const { currentSession } = useAuth();
+  const userId = currentSession?.userProfile?.id;
+
+  const {
+    getUserFreelance,
+    modifierFreelance,
+    uploadPhotoProfile,
+    getPhotoProfileUrl,
+    isLoading,
+  } = useFreelances();
+
+  // Récupérer dynamiquement le freelance de l'utilisateur connecté
+  const freelance = userId ? getUserFreelance(userId) : false;
 
   const [editMode, setEditMode] = useState({
     nom: false,
@@ -58,6 +73,11 @@ const FreelanceProfileEditor = () => {
   const [saveMessage, setSaveMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [isAIAssistantOpen, setIsAIAssistantOpen] = useState(false);
+
+  // État pour gérer le téléchargement de photo
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [photoPreview, setPhotoPreview] = useState("");
 
   // Services fictifs pour l'exemple (vous pouvez les charger depuis votre API)
   const [services] = useState([
@@ -95,6 +115,83 @@ const FreelanceProfileEditor = () => {
     },
   ]);
 
+  // // Rediriger si l'utilisateur n'est pas connecté ou n'est pas un freelance
+  // useEffect(() => {
+  //   if (!isLoading) {
+  //     setTimeout(() => {
+  //       if (!userId) {
+  //         router.push("/login");
+  //       } else if (freelance === false) {
+  //         router.push("/devenir-freelance");
+  //       }
+  //     }, 15000);
+  //   }
+  // }, [userId, freelance, isLoading, router]);
+
+  // Gestion de la sélection de fichier pour la photo de profil
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+
+      // Vérification du type et de la taille du fichier
+      const validTypes = ["image/jpeg", "image/png", "image/jpg", "image/webp"];
+      const maxSize = 5 * 1024 * 1024; // 5MB
+
+      if (!validTypes.includes(file.type)) {
+        showErrorMessage(
+          "Format de fichier non supporté. Utilisez JPG, PNG ou WebP."
+        );
+        return;
+      }
+
+      if (file.size > maxSize) {
+        showErrorMessage("La taille du fichier dépasse la limite de 5MB.");
+        return;
+      }
+
+      setSelectedFile(file);
+
+      // Créer une prévisualisation
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        setPhotoPreview(event.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // Télécharger la photo de profil
+  const uploadPhoto = async () => {
+    if (!freelance || !selectedFile) return;
+
+    try {
+      setUploading(true);
+      const result = await uploadPhotoProfile(freelance.id, selectedFile);
+
+      if (result.success) {
+        showSaveMessage("✓ Photo de profil mise à jour");
+        setSelectedFile(null);
+        // Recharger les données du freelance n'est pas nécessaire car uploadPhotoProfile fait déjà un rechargerFreelances()
+      } else {
+        showErrorMessage(
+          result.error || "Erreur lors du téléchargement de la photo"
+        );
+      }
+    } catch (error) {
+      showErrorMessage(
+        (error as Error).message || "Erreur lors du téléchargement de la photo"
+      );
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  // Annuler la sélection de photo
+  const cancelPhotoUpload = () => {
+    setSelectedFile(null);
+    setPhotoPreview("");
+  };
+
   const showSaveMessage = (message: string) => {
     setSaveMessage(message);
     setTimeout(() => setSaveMessage(""), 3000);
@@ -108,7 +205,9 @@ const FreelanceProfileEditor = () => {
   const toggleEdit = async (field: string) => {
     if (editMode[field as keyof typeof editMode]) {
       try {
-        await modifierFreelance(FREELANCE_ID, tempData);
+        if (!freelance) return;
+
+        await modifierFreelance(freelance.id, tempData);
         showSaveMessage("✓ Modifications enregistrées");
         setEditMode({ ...editMode, [field]: false });
         setTempData({});
@@ -118,6 +217,8 @@ const FreelanceProfileEditor = () => {
         );
       }
     } else {
+      if (!freelance) return;
+
       setTempData({
         [field]: (freelance?.[field as keyof typeof freelance] as string) || "",
       });
@@ -142,7 +243,7 @@ const FreelanceProfileEditor = () => {
           ...freelance.langues,
           { ...newLangue, id: Date.now() },
         ];
-        await modifierFreelance(FREELANCE_ID, { langues: nouvellesLangues });
+        await modifierFreelance(freelance.id, { langues: nouvellesLangues });
         setNewLangue({ langue: "", niveau: "" });
         showSaveMessage("✓ Langue ajoutée");
       } catch (error) {
@@ -152,10 +253,12 @@ const FreelanceProfileEditor = () => {
   };
 
   const supprimerLangue = async (id: number) => {
+    if (!freelance) return;
+
     try {
       const nouvellesLangues =
         freelance?.langues.filter((l) => l.id !== id) || [];
-      await modifierFreelance(FREELANCE_ID, { langues: nouvellesLangues });
+      await modifierFreelance(freelance.id, { langues: nouvellesLangues });
       showSaveMessage("✓ Langue supprimée");
     } catch (error) {
       showErrorMessage(
@@ -176,7 +279,7 @@ const FreelanceProfileEditor = () => {
           ...freelance.formations,
           { ...newFormation, id: Date.now() },
         ];
-        await modifierFreelance(FREELANCE_ID, {
+        await modifierFreelance(freelance.id, {
           formations: nouvellesFormations,
         });
         setNewFormation({ universite: "", pays: "", annee: "" });
@@ -188,10 +291,12 @@ const FreelanceProfileEditor = () => {
   };
 
   const supprimerFormation = async (id: number) => {
+    if (!freelance) return;
+
     try {
       const nouvellesFormations =
         freelance?.formations.filter((f) => f.id !== id) || [];
-      await modifierFreelance(FREELANCE_ID, {
+      await modifierFreelance(freelance.id, {
         formations: nouvellesFormations,
       });
       showSaveMessage("✓ Formation supprimée");
@@ -209,7 +314,7 @@ const FreelanceProfileEditor = () => {
           ...freelance.certifications,
           { ...newCertification, id: Date.now() },
         ];
-        await modifierFreelance(FREELANCE_ID, {
+        await modifierFreelance(freelance.id, {
           certifications: nouvellesCertifications,
         });
         setNewCertification({ nom: "", annee: "" });
@@ -221,10 +326,12 @@ const FreelanceProfileEditor = () => {
   };
 
   const supprimerCertification = async (id: number) => {
+    if (!freelance) return;
+
     try {
       const nouvellesCertifications =
         freelance?.certifications.filter((c) => c.id !== id) || [];
-      await modifierFreelance(FREELANCE_ID, {
+      await modifierFreelance(freelance.id, {
         certifications: nouvellesCertifications,
       });
       showSaveMessage("✓ Certification supprimée");
@@ -239,7 +346,7 @@ const FreelanceProfileEditor = () => {
     if (newWebsite.trim() && freelance) {
       try {
         const nouveauxSites = [...freelance.sites_web, newWebsite.trim()];
-        await modifierFreelance(FREELANCE_ID, { sites_web: nouveauxSites });
+        await modifierFreelance(freelance.id, { sites_web: nouveauxSites });
         setNewWebsite("");
         showSaveMessage("✓ Site web ajouté");
       } catch (error) {
@@ -249,10 +356,12 @@ const FreelanceProfileEditor = () => {
   };
 
   const supprimerWebsite = async (index: number) => {
+    if (!freelance) return;
+
     try {
       const nouveauxSites =
         freelance?.sites_web.filter((_, i) => i !== index) || [];
-      await modifierFreelance(FREELANCE_ID, { sites_web: nouveauxSites });
+      await modifierFreelance(freelance.id, { sites_web: nouveauxSites });
       showSaveMessage("✓ Site web supprimé");
     } catch (error) {
       showErrorMessage(
@@ -278,9 +387,17 @@ const FreelanceProfileEditor = () => {
         <div className="text-center">
           <AlertCircle className="w-12 h-12 text-red-600 mx-auto mb-4" />
           <p className="text-gray-900 font-semibold mb-2">
-            Freelance introuvable
+            Profil freelance introuvable
           </p>
-          <p className="text-gray-600">ID: {FREELANCE_ID}</p>
+          <p className="text-gray-600 mb-6">
+            Vous devez d'abord devenir un freelance pour accéder à cette page
+          </p>
+          <button
+            onClick={() => router.push("/devenir-freelance")}
+            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            Devenir freelance
+          </button>
         </div>
       </div>
     );
@@ -322,10 +439,76 @@ const FreelanceProfileEditor = () => {
               {/* En-tête du profil */}
               <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
                 <div className="flex flex-col sm:flex-row items-start space-y-4 sm:space-y-0 sm:space-x-6">
-                  <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-2xl font-bold flex-shrink-0">
-                    {freelance.prenom[0]}
-                    {freelance.nom[0]}
+                  {/* Photo de profil avec upload */}
+                  <div className="relative group">
+                    {freelance.photo_url ? (
+                      <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-gray-100 flex-shrink-0 relative">
+                        <img
+                          src={
+                            photoPreview ||
+                            getPhotoProfileUrl(freelance.photo_url)
+                          }
+                          alt={`${freelance.prenom} ${freelance.nom}`}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    ) : (
+                      <div className="w-24 h-24 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-2xl font-bold flex-shrink-0">
+                        {photoPreview ? (
+                          <img
+                            src={photoPreview}
+                            alt="Prévisualisation"
+                            className="w-full h-full object-cover rounded-full"
+                          />
+                        ) : (
+                          <>
+                            {freelance.prenom[0]}
+                            {freelance.nom[0]}
+                          </>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Overlay pour télécharger une photo */}
+                    <label
+                      htmlFor="photo-upload"
+                      className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-40 rounded-full opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity"
+                    >
+                      <Camera className="text-white" size={24} />
+                    </label>
+                    <input
+                      type="file"
+                      id="photo-upload"
+                      className="hidden"
+                      accept="image/jpeg, image/png, image/webp"
+                      onChange={handleFileChange}
+                    />
+
+                    {/* Boutons pour confirmer/annuler le téléchargement */}
+                    {selectedFile && (
+                      <div className="absolute -bottom-10 left-1/2 transform -translate-x-1/2 flex space-x-2">
+                        <button
+                          onClick={uploadPhoto}
+                          disabled={uploading}
+                          className="p-2 bg-green-600 text-white rounded-full hover:bg-green-700 disabled:bg-gray-400"
+                        >
+                          {uploading ? (
+                            <Loader2 className="animate-spin" size={16} />
+                          ) : (
+                            <Save size={16} />
+                          )}
+                        </button>
+                        <button
+                          onClick={cancelPhotoUpload}
+                          disabled={uploading}
+                          className="p-2 bg-red-600 text-white rounded-full hover:bg-red-700 disabled:bg-gray-400"
+                        >
+                          <X size={16} />
+                        </button>
+                      </div>
+                    )}
                   </div>
+
                   <div className="flex-1 min-w-0 w-full">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-3 gap-2">
                       {/* NOM ET PRÉNOM ÉDITABLES */}
@@ -393,7 +576,7 @@ const FreelanceProfileEditor = () => {
                               onClick={async () => {
                                 try {
                                   await modifierFreelance(
-                                    FREELANCE_ID,
+                                    freelance.id,
                                     tempData
                                   );
                                   showSaveMessage("✓ Nom et prénom modifiés");
@@ -608,7 +791,7 @@ const FreelanceProfileEditor = () => {
                               onClick={async () => {
                                 try {
                                   await modifierFreelance(
-                                    FREELANCE_ID,
+                                    freelance.id,
                                     tempData
                                   );
                                   showSaveMessage("✓ Localisation modifiée");
