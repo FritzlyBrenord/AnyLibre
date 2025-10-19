@@ -2,8 +2,12 @@
 
 import React, { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
-import { useFreelances } from "@/Context/Freelance/FreelanceContext";
+import {
+  FreelanceFormData,
+  useFreelances,
+} from "@/Context/Freelance/FreelanceContext";
 import { useServices } from "@/Context/Freelance/ContextService";
+import PoserUneQuestion from "@/Module/Client/PoserUneQuestion/PoserUneQuestion";
 
 // Types pour les données
 interface ProfileData {
@@ -61,7 +65,7 @@ interface Package {
 const FreelancerProfile = () => {
   const searchParams = useSearchParams();
   const freelanceId = searchParams.get("id");
-
+  const [isMessagingOpen, setIsMessagingOpen] = useState(false);
   const [showEnglish, setShowEnglish] = useState(false);
   const [activeTab, setActiveTab] = useState("services");
   const [isLoading, setIsLoading] = useState(true);
@@ -71,9 +75,9 @@ const FreelancerProfile = () => {
   const { getServicesByFreelanceId } = useServices();
 
   // États pour les données récupérées
-  const [freelance, setFreelance] = useState<Freelance | null>(null);
+  const [freelance, setFreelance] = useState<FreelanceFormData | null>(null);
   const [freelanceServices, setFreelanceServices] = useState<Service[]>([]);
-
+  const UserFreelance = freelance?.id_user;
   // Données par défaut pour le profil (à remplacer par les données du freelance)
   const profileData: ProfileData = {
     name: freelance ? `${freelance.prenom} ${freelance.nom}` : "Freelancer",
@@ -305,7 +309,10 @@ const FreelancerProfile = () => {
                       </span>
                     </div>
                   </div>
-                  <button className="mb-3 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors">
+                  <button
+                    onClick={() => setIsMessagingOpen(true)}
+                    className="mb-3 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                  >
                     Contacter
                   </button>
                   <div className="flex items-center gap-4 text-gray-600 text-sm">
@@ -658,6 +665,11 @@ const FreelancerProfile = () => {
           </div>
         </div>
       </footer>
+      <PoserUneQuestion
+        open={isMessagingOpen}
+        onClose={() => setIsMessagingOpen(false)}
+        id={UserFreelance}
+      />
     </div>
   );
 };

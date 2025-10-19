@@ -194,6 +194,21 @@ export const VerifierUtilisateurAuth = async (userId: string) => {
     return null;
   }
 };
+// export const SelectData = async (table: string, p0: { conditions: { column: string; operator: string; value: any; }[]; or: boolean; }) => {
+//   try {
+//     const { error, data } = await supabase
+//       .from(table)
+//       .select("*")
+//       .order("created_at", { ascending: false });
+//     if (!error) {
+//       console.log("Données récupérées");
+//       return data;
+//     }
+//   } catch (err) {
+//     console.error("Erreur lors de l'insertion: ");
+//   }
+// };
+
 export const SelectData = async (
   table: string,
   options?: {
@@ -205,6 +220,40 @@ export const SelectData = async (
 ) => {
   try {
     let query = supabase.from(table).select("*");
+
+    // Appliquer les conditions si elles existent
+    if (options?.conditions && options.conditions.length > 0) {
+      if (options.or) {
+        // Pour OR, on utilise la syntaxe OR de Supabase
+        const orConditions = options.conditions
+          .map(
+            (condition) =>
+              `${condition.column}.${condition.operator}.${condition.value}`
+          )
+          .join(",");
+        query = query.or(orConditions);
+      } else {
+        // Pour AND, on applique chaque condition
+        options.conditions.forEach((condition) => {
+          switch (condition.operator) {
+            case "eq":
+              query = query.eq(condition.column, condition.value);
+              break;
+            case "neq":
+              query = query.neq(condition.column, condition.value);
+              break;
+            case "gt":
+              query = query.gt(condition.column, condition.value);
+              break;
+            case "lt":
+              query = query.lt(condition.column, condition.value);
+              break;
+            default:
+              query = query.eq(condition.column, condition.value);
+          }
+        });
+      }
+    }
 
     // Appliquer le tri
     if (options?.orderBy) {
@@ -234,7 +283,6 @@ export const SelectData = async (
     return null;
   }
 };
-
 export const DeleteData = async (table: string, id: string | number) => {
   try {
     const { data, error } = await supabase.from(table).delete().eq("id", id);
@@ -555,6 +603,7 @@ export const UpdatePassword = async (newValeur: string) => {
     }
   } catch (error) {}
 };
+
 // Fonction pour s'abonner aux changements d'une table
 // Fonction pour s'abonner aux changements d'une table
 export const SubscribeToTable = (config: {
@@ -590,4 +639,58 @@ export const SubscribeToTable = (config: {
 // Fonction pour se désabonner
 export const UnsubscribeFromChannel = (channel: RealtimeChannel) => {
   supabase.removeChannel(channel);
+};
+
+export const SelectDataWithJoin = async (
+  table: string,
+  options: {
+    columns?: string;
+    joins?: { table: string; on: string; type?: "inner" | "left" }[];
+    conditions?: { column: string; operator: string; value: any }[];
+    orderBy?: { column: string; ascending: boolean };
+    limit?: number;
+  }
+) => {
+  try {
+    let query = supabase.from(table).select(options.columns || "*");
+
+    // Appliquer les conditions
+    if (options.conditions) {
+      options.conditions.forEach((condition) => {
+        switch (condition.operator) {
+          case "eq":
+            query = query.eq(condition.column, condition.value);
+            break;
+          case "neq":
+            query = query.neq(condition.column, condition.value);
+            break;
+          // Ajouter d'autres opérateurs au besoin
+        }
+      });
+    }
+
+    // Appliquer le tri
+    if (options.orderBy) {
+      query = query.order(options.orderBy.column, {
+        ascending: options.orderBy.ascending,
+      });
+    }
+
+    // Appliquer la limite
+    if (options.limit) {
+      query = query.limit(options.limit);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      console.error("Erreur lors de la sélection avec jointure:", error);
+      return null;
+    }
+
+    return data;
+  } catch (err) {
+    console.error("Erreur lors de la sélection avec jointure:", err);
+    return null;
+  }
 };
