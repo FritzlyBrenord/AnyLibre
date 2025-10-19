@@ -6,7 +6,7 @@ import React from "react";
 const page = () => {
   return (
     <div>
-      <Layout>
+      <Layout showFooter={false}>
         <MessagingInterface />
       </Layout>
     </div>

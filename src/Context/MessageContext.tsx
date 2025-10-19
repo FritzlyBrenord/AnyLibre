@@ -1,4 +1,4 @@
-// contexts/MessagingContext.tsx
+// contexts/MessagingContext.tsx - FILTRAGE CORRIGÉ + REALTIME
 "use client";
 
 import React, {
@@ -46,7 +46,8 @@ interface Message {
   file_type?: string;
   order_details?: any;
   read_at?: string;
-  is_deleted?: boolean; // ✅ NOUVEAU: Suppression logique pour messages
+  is_deleted_user1: boolean;
+  is_deleted_user2: boolean;
   created_at: string;
   updated_at: string;
   sender?: {
@@ -67,8 +68,6 @@ interface Conversation {
   is_blocked: boolean;
   is_spam: boolean;
   is_starred: boolean;
-  is_deleted_user1: boolean; // ✅ NOUVEAU: Suppression logique user1
-  is_deleted_user2: boolean; // ✅ NOUVEAU: Suppression logique user2
   last_message_at: string;
   created_at: string;
   updated_at: string;
@@ -78,6 +77,9 @@ interface Conversation {
     nom_utilisateur: string;
     profile_image?: string;
     role: "client" | "freelance";
+    email?: string;
+    status?: string;
+    phone?: string;
   };
   last_message?: Message;
   unread_count: number;
@@ -118,7 +120,12 @@ export interface MessagingContextType {
   toggleStar: (conversationId: string, messageId?: string) => Promise<boolean>;
   archiveConversation: (conversationId: string) => Promise<boolean>;
   reportConversation: (conversationId: string) => Promise<boolean>;
-  deleteConversation: (conversationId: string) => Promise<boolean>; // ✅ Suppression logique
+  deleteMessage: (
+    messageId: string,
+    conversationId: string
+  ) => Promise<boolean>;
+  deleteAllMessagesForUser: (conversationId: string) => Promise<boolean>;
+  deleteConversation: (conversationId: string) => Promise<boolean>;
   uploadImage: (file: File, userId: string) => Promise<any>;
   uploadVideo: (file: File, userId: string) => Promise<any>;
   uploadDocument: (file: File, userId: string) => Promise<any>;
@@ -168,6 +175,7 @@ export const MessagingProvider: React.FC<{ children: React.ReactNode }> = ({
   >("idle");
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const refreshTimeoutRef = useRef<NodeJS.Timeout>();
 
   useEffect(() => {
     const checkMobile = () => {
@@ -196,6 +204,9 @@ export const MessagingProvider: React.FC<{ children: React.ReactNode }> = ({
           nom_utilisateur: userData[0].nom_utilisateur,
           profile_image: userData[0].profile_image,
           role: userData[0].role,
+          email: userData[0].email,
+          status: userData[0].status,
+          phone: userData[0].phone,
         };
       }
       return null;
@@ -205,12 +216,31 @@ export const MessagingProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   }, []);
 
-  // ✅ CHARGER LES CONVERSATIONS (AVEC SUPPRESSION LOGIQUE)
+  // ✅ DÉTERMINER QUEL FLAG DE SUPPRESSION UTILISER
+  const getDeleteFlagForUser = (conversation: any): string => {
+    return conversation.user1_id === currentUserId
+      ? "is_deleted_user1"
+      : "is_deleted_user2";
+  };
+
+  // ✅ FILTRER LES MESSAGES VISIBLES (CLIENT-SIDE FILTER)
+  const filterVisibleMessages = (allMessages: Message[]): Message[] => {
+    return allMessages.filter((msg) => {
+      // Si l'utilisateur courant est user1, vérifier is_deleted_user1
+      // Si l'utilisateur courant est user2, vérifier is_deleted_user2
+      const isCurrentUserUser1 =
+        currentConversation?.user1_id === currentUserId;
+      const deleteFlag = isCurrentUserUser1
+        ? msg.is_deleted_user1
+        : msg.is_deleted_user2;
+
+      return !deleteFlag; // Afficher seulement si NON supprimé
+    });
+  };
+
+  // ✅ CHARGER LES CONVERSATIONS
   const loadConversations = useCallback(async () => {
-    if (!currentUserId) {
-      console.log("currentUserId manquant");
-      return;
-    }
+    if (!currentUserId) return;
 
     try {
       setLoading(true);
@@ -233,61 +263,57 @@ export const MessagingProvider: React.FC<{ children: React.ReactNode }> = ({
       });
 
       if (userConversations && Array.isArray(userConversations)) {
-        console.log(`${userConversations.length} conversations trouvées`);
-
         const enrichedConversations = await Promise.all(
           userConversations.map(async (conv: any) => {
             try {
-              // ✅ FILTRER PAR SUPPRESSION LOGIQUE
-              // Si currentUserId est user1, vérifier is_deleted_user1
-              // Si currentUserId est user2, vérifier is_deleted_user2
-              const isCurrentUserUser1 = conv.user1_id === currentUserId;
-              const isDeletedForCurrentUser = isCurrentUserUser1
-                ? conv.is_deleted_user1
-                : conv.is_deleted_user2;
-
-              // Si la conversation est supprimée pour cet utilisateur, l'ignorer
-              if (isDeletedForCurrentUser === true) {
-                return null;
-              }
-
               const otherUserId =
                 conv.user1_id === currentUserId ? conv.user2_id : conv.user1_id;
 
               const otherUser = await getUserData(otherUserId);
+              const isCurrentUserUser1 = conv.user1_id === currentUserId;
 
-              const lastMessages = await SelectData("messages", {
+              // ✅ RÉCUPÉRER TOUS LES MESSAGES
+              const allMessages = await SelectData("messages", {
                 conditions: [
-                  { column: "conversation_id", operator: "eq", value: conv.id },
-                  { column: "is_deleted", operator: "neq", value: true }, // ✅ Ne pas afficher messages supprimés
+                  {
+                    column: "conversation_id",
+                    operator: "eq",
+                    value: conv.id,
+                  },
                 ],
                 orderBy: { column: "created_at", ascending: false },
-                limit: 1,
               });
 
+              // ✅ FILTRER PAR FLAG DE SUPPRESSION (CLIENT-SIDE)
+              const visibleMessages =
+                allMessages?.filter((msg: any) => {
+                  const deleteFlag = isCurrentUserUser1
+                    ? msg.is_deleted_user1
+                    : msg.is_deleted_user2;
+                  return !deleteFlag;
+                }) || [];
+
+              // ✅ SI AUCUN MESSAGE VISIBLE → CACHER LA CONVERSATION
+              if (visibleMessages.length === 0) {
+                return null;
+              }
+
+              // ✅ RÉCUPÉRER LE DERNIER MESSAGE VISIBLE
               let lastMessageEnriched = null;
-              if (lastMessages && lastMessages.length > 0) {
-                const sender = await getUserData(lastMessages[0].sender_id);
+              if (visibleMessages.length > 0) {
+                const sender = await getUserData(visibleMessages[0].sender_id);
                 lastMessageEnriched = {
-                  ...lastMessages[0],
+                  ...visibleMessages[0],
                   sender,
                 };
               }
 
-              const unreadMessages = await SelectData("messages", {
-                conditions: [
-                  { column: "conversation_id", operator: "eq", value: conv.id },
-                  {
-                    column: "sender_id",
-                    operator: "neq",
-                    value: currentUserId,
-                  },
-                  { column: "is_read", operator: "eq", value: false },
-                  { column: "is_deleted", operator: "neq", value: true }, // ✅ Messages non supprimés
-                ],
-              });
+              // ✅ COMPTER LES NON-LUS
+              const unreadMessages = visibleMessages.filter(
+                (msg: any) => msg.sender_id !== currentUserId && !msg.is_read
+              );
 
-              const unread_count = unreadMessages ? unreadMessages.length : 0;
+              const unread_count = unreadMessages.length;
 
               return {
                 ...conv,
@@ -302,7 +328,6 @@ export const MessagingProvider: React.FC<{ children: React.ReactNode }> = ({
           })
         );
 
-        // Filtrer les null (conversations supprimées)
         const validConversations = enrichedConversations.filter(
           (c) => c !== null
         );
@@ -318,13 +343,24 @@ export const MessagingProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   }, [currentUserId, getUserData]);
 
-  // ✅ CHARGER LES MESSAGES (SANS SUPPRIMÉS)
+  // ✅ CHARGER LES MESSAGES
   const loadMessages = useCallback(
     async (conversationId: string) => {
-      if (!conversationId) return;
+      if (!conversationId || !currentUserId) return;
 
       try {
         setLoading(true);
+
+        const conversation = await SelectData("conversations", {
+          conditions: [{ column: "id", operator: "eq", value: conversationId }],
+        });
+
+        if (!conversation || conversation.length === 0) return;
+
+        const conv = conversation[0];
+        const isCurrentUserUser1 = conv.user1_id === currentUserId;
+
+        // Récupérer TOUS les messages
         const messagesData = await SelectData("messages", {
           conditions: [
             {
@@ -332,14 +368,21 @@ export const MessagingProvider: React.FC<{ children: React.ReactNode }> = ({
               operator: "eq",
               value: conversationId,
             },
-            { column: "is_deleted", operator: "neq", value: true }, // ✅ Exclure messages supprimés
           ],
           orderBy: { column: "created_at", ascending: true },
         });
 
         if (messagesData && Array.isArray(messagesData)) {
+          // ✅ FILTRER PAR FLAG DE SUPPRESSION (CLIENT-SIDE)
+          const visibleMessages = messagesData.filter((msg: any) => {
+            const deleteFlag = isCurrentUserUser1
+              ? msg.is_deleted_user1
+              : msg.is_deleted_user2;
+            return !deleteFlag;
+          });
+
           const enrichedMessages = await Promise.all(
-            messagesData.map(async (msg: any) => {
+            visibleMessages.map(async (msg: any) => {
               const sender = await getUserData(msg.sender_id);
 
               let reply_to = null;
@@ -368,6 +411,8 @@ export const MessagingProvider: React.FC<{ children: React.ReactNode }> = ({
           );
 
           setMessages(enrichedMessages);
+        } else {
+          setMessages([]);
         }
       } catch (err: any) {
         console.error("Erreur chargement messages:", err);
@@ -376,7 +421,7 @@ export const MessagingProvider: React.FC<{ children: React.ReactNode }> = ({
         setLoading(false);
       }
     },
-    [getUserData]
+    [currentUserId, getUserData]
   );
 
   // ✅ MARQUER COMME LU
@@ -429,7 +474,8 @@ export const MessagingProvider: React.FC<{ children: React.ReactNode }> = ({
         is_read: false,
         is_starred: false,
         is_edited: false,
-        is_deleted: false, // ✅ NOUVEAU: Message pas supprimé
+        is_deleted_user1: false,
+        is_deleted_user2: false,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       };
@@ -539,16 +585,6 @@ export const MessagingProvider: React.FC<{ children: React.ReactNode }> = ({
       if (existingConversations && existingConversations.length > 0) {
         const existingConv = existingConversations[0];
 
-        // ✅ SI LA CONVERSATION ÉTAIT SUPPRIMÉE, LA RESTAURER
-        const isCurrentUserUser1 = existingConv.user1_id === currentUserId;
-        const deleteFlag = isCurrentUserUser1
-          ? "is_deleted_user1"
-          : "is_deleted_user2";
-
-        await UpdateData("conversations", existingConv.id, {
-          [deleteFlag]: false,
-        });
-
         if (initialMessage) {
           await sendMessage(initialMessage, existingConv.id);
         }
@@ -564,8 +600,6 @@ export const MessagingProvider: React.FC<{ children: React.ReactNode }> = ({
         is_blocked: false,
         is_spam: false,
         is_starred: false,
-        is_deleted_user1: false, // ✅ NOUVEAU
-        is_deleted_user2: false, // ✅ NOUVEAU
         last_message_at: new Date().toISOString(),
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
@@ -626,15 +660,21 @@ export const MessagingProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   };
 
-  // ✅ ARCHIVER CONVERSATION
+  // ✅ ARCHIVER/DÉSARCHIVER
   const archiveConversation = async (
     conversationId: string
   ): Promise<boolean> => {
     try {
+      const conversation = conversations.find((c) => c.id === conversationId);
+      if (!conversation) return false;
+
+      const newArchivedState = !conversation.is_archived;
+
       await UpdateData("conversations", conversationId, {
-        is_archived: true,
+        is_archived: newArchivedState,
         updated_at: new Date().toISOString(),
       });
+
       await loadConversations();
 
       if (currentConversation?.id === conversationId) {
@@ -649,76 +689,20 @@ export const MessagingProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   };
 
-  // ✅ SIGNALER COMME SPAM
+  // ✅ SIGNALER/RETIRER SPAM
   const reportConversation = async (
     conversationId: string
   ): Promise<boolean> => {
     try {
-      await UpdateData("conversations", conversationId, {
-        is_spam: true,
-        updated_at: new Date().toISOString(),
-      });
-      await loadConversations();
-      return true;
-    } catch (err: any) {
-      console.error("Erreur rapport:", err);
-      return false;
-    }
-  };
-
-  // ✅ SUPPRIMER CONVERSATION (SUPPRESSION LOGIQUE)
-  const deleteConversation = async (
-    conversationId: string
-  ): Promise<boolean> => {
-    try {
-      if (!currentUserId) return false;
-
       const conversation = conversations.find((c) => c.id === conversationId);
       if (!conversation) return false;
 
-      // Déterminer quel flag de suppression mettre à jour
-      const isCurrentUserUser1 = conversation.user1_id === currentUserId;
-      const deleteFlag = isCurrentUserUser1
-        ? "is_deleted_user1"
-        : "is_deleted_user2";
-      const otherDeleteFlag = isCurrentUserUser1
-        ? "is_deleted_user2"
-        : "is_deleted_user1";
+      const newSpamState = !conversation.is_spam;
 
-      // Mettre à jour le flag pour l'utilisateur courant
       await UpdateData("conversations", conversationId, {
-        [deleteFlag]: true,
+        is_spam: newSpamState,
+        updated_at: new Date().toISOString(),
       });
-
-      // Si les deux utilisateurs ont supprimé, on peut supprimer physiquement
-      const updatedConv = await SelectData("conversations", {
-        conditions: [{ column: "id", operator: "eq", value: conversationId }],
-      });
-
-      if (
-        updatedConv &&
-        updatedConv.length > 0 &&
-        updatedConv[0].is_deleted_user1 === true &&
-        updatedConv[0].is_deleted_user2 === true
-      ) {
-        // Supprimer tous les messages
-        const allMessages = await SelectData("messages", {
-          conditions: [
-            {
-              column: "conversation_id",
-              operator: "eq",
-              value: conversationId,
-            },
-          ],
-        });
-
-        for (const msg of allMessages) {
-          await DeleteData("messages", msg.id);
-        }
-
-        // Supprimer la conversation
-        await DeleteData("conversations", conversationId);
-      }
 
       await loadConversations();
 
@@ -729,13 +713,117 @@ export const MessagingProvider: React.FC<{ children: React.ReactNode }> = ({
 
       return true;
     } catch (err: any) {
-      console.error("Erreur suppression:", err);
+      console.error("Erreur rapport:", err);
+      return false;
+    }
+  };
+
+  // ✅ SUPPRIMER UN MESSAGE
+  const deleteMessage = async (
+    messageId: string,
+    conversationId: string
+  ): Promise<boolean> => {
+    try {
+      if (!currentUserId) {
+        setError("Authentification requise");
+        return false;
+      }
+
+      const conversation = conversations.find((c) => c.id === conversationId);
+      if (!conversation) return false;
+
+      const isCurrentUserUser1 = conversation.user1_id === currentUserId;
+      const deleteFlag = isCurrentUserUser1
+        ? "is_deleted_user1"
+        : "is_deleted_user2";
+
+      await UpdateData("messages", messageId, {
+        [deleteFlag]: true,
+        updated_at: new Date().toISOString(),
+      });
+
+      await loadMessages(conversationId);
+      await loadConversations();
+
+      return true;
+    } catch (err: any) {
+      console.error("Erreur suppression message:", err);
       setError(err.message || "Erreur suppression");
       return false;
     }
   };
 
-  // ✅ UPLOAD IMAGE
+  // ✅ SUPPRIMER TOUS LES MESSAGES POUR L'UTILISATEUR
+  const deleteAllMessagesForUser = async (
+    conversationId: string
+  ): Promise<boolean> => {
+    try {
+      if (!currentUserId) {
+        setError("Authentification requise");
+        return false;
+      }
+
+      const conversation = conversations.find((c) => c.id === conversationId);
+      if (!conversation) {
+        setError("Conversation introuvable");
+        return false;
+      }
+
+      if (conversation.is_archived || conversation.is_spam) {
+        setError(
+          "Impossible de supprimer une conversation archivée ou signalée comme spam"
+        );
+        return false;
+      }
+
+      const isCurrentUserUser1 = conversation.user1_id === currentUserId;
+      const deleteFlag = isCurrentUserUser1
+        ? "is_deleted_user1"
+        : "is_deleted_user2";
+
+      const allMessages = await SelectData("messages", {
+        conditions: [
+          {
+            column: "conversation_id",
+            operator: "eq",
+            value: conversationId,
+          },
+        ],
+      });
+
+      if (allMessages && Array.isArray(allMessages)) {
+        for (const msg of allMessages) {
+          await UpdateData("messages", msg.id, {
+            [deleteFlag]: true,
+            updated_at: new Date().toISOString(),
+          });
+        }
+      }
+
+      await loadMessages(conversationId);
+      await loadConversations();
+
+      if (currentConversation?.id === conversationId) {
+        setCurrentConversation(null);
+        setMessages([]);
+      }
+
+      return true;
+    } catch (err: any) {
+      console.error("Erreur suppression conversation:", err);
+      setError(err.message || "Erreur suppression");
+      return false;
+    }
+  };
+
+  // ✅ SUPPRIMER CONVERSATION
+  const deleteConversation = async (
+    conversationId: string
+  ): Promise<boolean> => {
+    return deleteAllMessagesForUser(conversationId);
+  };
+
+  // ✅ UPLOAD FICHIERS
   const uploadImage = async (file: File, userId: string): Promise<any> => {
     try {
       setIsUploadingImage(true);
@@ -791,7 +879,6 @@ export const MessagingProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   };
 
-  // ✅ UPLOAD VIDEO
   const uploadVideo = async (file: File, userId: string): Promise<any> => {
     try {
       setIsUploadingVideo(true);
@@ -827,7 +914,6 @@ export const MessagingProvider: React.FC<{ children: React.ReactNode }> = ({
       });
 
       setIsCompressingVideo(false);
-
       setVideoUploadStep("uploading");
 
       const timestamp = Date.now();
@@ -866,7 +952,6 @@ export const MessagingProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   };
 
-  // ✅ UPLOAD DOCUMENT
   const uploadDocument = async (file: File, userId: string): Promise<any> => {
     try {
       setIsUploadingDocument(true);
@@ -929,7 +1014,6 @@ export const MessagingProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   };
 
-  // Suppression fichiers
   const deleteImage = async (path: string): Promise<boolean> => {
     try {
       const { error } = await supabase.storage
@@ -969,7 +1053,7 @@ export const MessagingProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   };
 
-  // Subscriptions temps réel
+  // ✅ SUBSCRIPTIONS REALTIME - AUTO-REFRESH SANS CLIC UTILISATEUR
   useEffect(() => {
     if (!currentUserId) return;
 
@@ -982,6 +1066,8 @@ export const MessagingProvider: React.FC<{ children: React.ReactNode }> = ({
         channelName: `conversations-${currentUserId}`,
         event: "*",
         callback: (payload: any) => {
+          console.log("Changement conversations détecté:", payload);
+          // ✅ RECHARGER AUTOMATIQUEMENT
           loadConversations();
 
           if (
@@ -998,6 +1084,8 @@ export const MessagingProvider: React.FC<{ children: React.ReactNode }> = ({
         channelName: `messages-${currentUserId}`,
         event: "*",
         callback: (payload: any) => {
+          console.log("Changement messages détecté:", payload);
+          // ✅ RECHARGER AUTOMATIQUEMENT
           loadConversations();
 
           if (
@@ -1068,6 +1156,8 @@ export const MessagingProvider: React.FC<{ children: React.ReactNode }> = ({
     toggleStar,
     archiveConversation,
     reportConversation,
+    deleteMessage,
+    deleteAllMessagesForUser,
     deleteConversation,
     uploadImage,
     uploadVideo,

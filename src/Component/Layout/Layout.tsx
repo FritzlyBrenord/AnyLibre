@@ -7,17 +7,24 @@ import { useAuth } from "@/Context/ContextUser";
 interface Props {
   children?: React.ReactNode;
   showHeaderSearchEtcategory?: boolean;
+  showFooter?: boolean;
 }
-const Layout = ({ children, showHeaderSearchEtcategory }: Props) => {
+const Layout = ({
+  children,
+  showHeaderSearchEtcategory,
+  showFooter = true,
+}: Props) => {
   return (
     <div className="overflow-hidden">
-      <Header show={true} />
+      <Header />
 
       <HeaderAuth />
 
       {children}
 
-      <Footer />
+      <div className={`${!showFooter && "hidden"}`}>
+        <Footer />
+      </div>
     </div>
   );
 };

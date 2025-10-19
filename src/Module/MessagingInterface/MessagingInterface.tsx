@@ -2,14 +2,20 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-
 import Image from "next/image";
 import { format } from "date-fns";
 import { fr } from "date-fns/locale";
 import Link from "next/link";
 import { useAuth } from "@/Context/ContextUser";
 import { useMessaging } from "@/Context/MessageContext";
+import { useFreelances } from "@/Context/Freelance/FreelanceContext";
 
+interface User2 {
+  nom: string;
+  prenom: string;
+  username: string;
+  photo: string;
+}
 // Composant de chargement
 const LoadingSpinner = () => (
   <div className="flex items-center justify-center h-40">
@@ -68,6 +74,8 @@ const MessagingInterface = () => {
     archiveConversation,
     reportConversation,
     deleteConversation,
+    deleteAllMessagesForUser,
+    deleteMessage,
     uploadImage,
     uploadVideo,
     uploadDocument,
@@ -87,7 +95,8 @@ const MessagingInterface = () => {
     createConversation,
   } = useMessaging();
 
-  const { currentSession } = useAuth();
+  const { currentSession, GetUserById } = useAuth();
+  const { getFreelanceByUserId, getPhotoProfileUrl } = useFreelances();
 
   // États locaux
   const [newMessage, setNewMessage] = useState("");
@@ -104,11 +113,11 @@ const MessagingInterface = () => {
     "none" | "messages" | "conversations"
   >("none");
   const [enlargedImage, setEnlargedImage] = useState<string | null>(null);
-
+  const NomPre = getFreelanceByUserId(currentSession?.user?.id || "")?.nom;
   // Sections affichées/masquées
   const [showContactSections, setShowContactSections] = useState({
-    filters: true,
-    starred: true,
+    filters: false,
+    starred: false,
     recent: true,
   });
 
@@ -187,6 +196,95 @@ const MessagingInterface = () => {
     setCurrentConversation,
   ]);
 
+  const useUserInfo = (): User2 => {
+    const { currentConversation } = useMessaging();
+    const { GetUserById, currentSession } = useAuth();
+    const [userInfo, setUserInfo] = useState<User2>({
+      nom: "",
+      prenom: "",
+      username: "",
+      photo: "",
+    });
+
+    useEffect(() => {
+      const fetchUserInfo = async () => {
+        try {
+          const id1 = currentConversation?.user1_id;
+          const id2 = currentConversation?.user2_id;
+          const currentUserId = currentSession?.user?.id;
+
+          // Déterminer l'ID de l'autre utilisateur
+          const otherUserId = id1 === currentUserId ? id2 : id1;
+
+          if (!otherUserId) {
+            setUserInfo({
+              nom: "Utilisateur",
+              prenom: "Inconnu",
+              username: "user",
+              photo: "",
+            });
+            return;
+          }
+
+          // 1. Essayer le compte freelance d'abord
+          const freelanceInfo = getFreelanceByUserId(otherUserId);
+          if (freelanceInfo) {
+            setUserInfo({
+              nom: freelanceInfo.nom || "",
+              prenom: freelanceInfo.prenom || "",
+              username: freelanceInfo.username || freelanceInfo.username || "",
+              photo: getPhotoProfileUrl(freelanceInfo.photo_url || ""),
+            });
+            return;
+          }
+
+          // 2. Si pas de freelance, chercher l'utilisateur normal
+          const userData = await GetUserById(otherUserId);
+          if (userData) {
+            setUserInfo({
+              nom:
+                userData.nom_utilisateur ||
+                userData.email?.split("@")[0] ||
+                "Utilisateur",
+              prenom: "",
+              username:
+                userData.nom_utilisateur ||
+                userData.email?.split("@")[0] ||
+                "user",
+              photo: getPhotoProfileUrl(userData.profile_image || ""),
+            });
+            return;
+          }
+
+          // 3. Fallback si rien trouvé
+          setUserInfo({
+            nom: "",
+            prenom: "",
+            username: "",
+            photo: "",
+          });
+        } catch (error) {
+          console.error(
+            "Erreur lors de la récupération des infos utilisateur:",
+            error
+          );
+          setUserInfo({
+            nom: "",
+            prenom: "",
+            username: "",
+            photo: "",
+          });
+        }
+      };
+
+      fetchUserInfo();
+    }, [currentConversation, currentSession, GetUserById]);
+
+    return userInfo;
+  };
+
+  const userInfo = useUserInfo();
+
   // Fermer le menu contact en cliquant à l'extérieur
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -237,7 +335,6 @@ const MessagingInterface = () => {
       setCurrentConversation(conversation);
       setSearchInConversation("");
       if (isMobile) setShowSidebar(false);
-
       markAsRead(conversation.id);
     }
   };
@@ -323,26 +420,44 @@ const MessagingInterface = () => {
   };
 
   const handleDeleteConversation = async (conversationId: string) => {
-    await deleteConversation(conversationId);
-    setShowContactMenu(null);
+    try {
+      const success = await deleteConversation(conversationId);
+      if (success) {
+        // La conversation disparaît automatiquement après le rechargement
+        setShowContactMenu(null);
+        console.log("Conversation supprimée avec succès");
+      }
+    } catch (error) {
+      console.error("Erreur suppression conversation:", error);
+    }
   };
 
   const handleDeleteMessage = async (messageId: string) => {
     if (!currentConversation) return;
-    // À implémenter: fonction de suppression de message dans le context
-    console.log("Supprimer message:", messageId);
-  };
 
+    try {
+      const success = await deleteMessage(messageId, currentConversation.id);
+      if (success) {
+        // Le message est supprimé et la conversation rechargée automatiquement
+        console.log("Message supprimé avec succès");
+      }
+    } catch (error) {
+      console.error("Erreur suppression message:", error);
+      setError("Erreur lors de la suppression du message");
+    }
+  };
   const handleDeleteSelected = async () => {
     if (selectMode === "conversations" && selected.conversations.length > 0) {
+      // Supprimer les conversations sélectionnées (deleteAllMessagesForUser)
       for (const convId of selected.conversations) {
         await deleteConversation(convId);
       }
       setSelected({ ...selected, conversations: [] });
       setSelectMode("none");
     } else if (selectMode === "messages" && selected.messages.length > 0) {
+      // Supprimer les messages sélectionnés un par un
       for (const msgId of selected.messages) {
-        await handleDeleteMessage(msgId);
+        await deleteMessage(msgId, currentConversation?.id || "");
       }
       setSelected({ ...selected, messages: [] });
       setSelectMode("none");
@@ -520,6 +635,7 @@ const MessagingInterface = () => {
   return (
     <div className="h-screen flex flex-col bg-gray-100 py-16">
       {/* Modal agrandissement image */}
+
       {enlargedImage && (
         <div
           className="fixed inset-0 bg-black bg-opacity-75 z-50 flex items-center justify-center p-4"
@@ -556,7 +672,6 @@ const MessagingInterface = () => {
           </div>
         </div>
       )}
-
       <div className="flex-1 flex overflow-hidden">
         {/* Sidebar - Filtres et liste des contacts */}
         {(showSidebar || !isMobile) && (
@@ -787,7 +902,7 @@ const MessagingInterface = () => {
                     >
                       <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
                     </svg>
-                    Messages suivis
+                    Messages suivis {NomPre}
                   </span>
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
@@ -871,7 +986,7 @@ const MessagingInterface = () => {
                                   </span>
                                 </div>
                                 <p className="text-xs text-gray-500 truncate">
-                                  {conv.other_user?.email || ""}
+                                  {conv.other_user?.email || ""} ll
                                 </p>
                                 <p className="text-xs text-gray-500 mt-1 truncate">
                                   {conv.last_message?.content ||
@@ -1006,19 +1121,18 @@ const MessagingInterface = () => {
                                     />
                                   </div>
                                 )}
+
                                 <div className="relative mr-3">
                                   <div className="w-10 h-10 rounded-full bg-gray-200 overflow-hidden">
-                                    {conv.other_user?.profile_image ? (
+                                    {userInfo.photo ? (
                                       <img
-                                        src={conv.other_user.profile_image}
-                                        alt={conv.other_user.nom_utilisateur}
+                                        src={userInfo.photo}
+                                        alt={userInfo.nom}
                                         className="w-full h-full object-cover"
                                       />
                                     ) : (
                                       <div className="w-full h-full flex items-center justify-center bg-gray-300 text-gray-600 font-medium">
-                                        {getInitials(
-                                          conv.other_user?.nom_utilisateur || ""
-                                        )}
+                                        {getInitials(userInfo.nom || "")}
                                       </div>
                                     )}
                                   </div>
@@ -1026,8 +1140,7 @@ const MessagingInterface = () => {
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-center justify-between">
                                     <h3 className="font-medium text-gray-800 text-sm truncate">
-                                      {conv.other_user?.nom_utilisateur ||
-                                        "Utilisateur"}
+                                      {userInfo.nom} {userInfo.prenom}
                                     </h3>
                                     <span className="text-xs text-gray-500 whitespace-nowrap ml-1">
                                       {conv.last_message_at
@@ -1108,8 +1221,10 @@ const MessagingInterface = () => {
                                       </svg>
                                     </button>
 
+                                    {/* ✅ MENU CONTEXTUEL - LOGIQUE NOUVELLE */}
                                     {showContactMenu === conv.id && (
                                       <div className="absolute right-0 top-6 bg-white border border-gray-200 rounded-lg shadow-lg py-2 z-30 w-48">
+                                        {/* ARCHIVE/UNARCHIVE */}
                                         <button
                                           onClick={() =>
                                             handleArchiveConversation(conv.id)
@@ -1130,8 +1245,12 @@ const MessagingInterface = () => {
                                               d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"
                                             />
                                           </svg>
-                                          Archiver
+                                          {conv.is_archived
+                                            ? "Désarchiver"
+                                            : "Archiver"}
                                         </button>
+
+                                        {/* SPAM/UNSPAM */}
                                         <button
                                           onClick={() =>
                                             handleReportConversation(conv.id)
@@ -1152,30 +1271,36 @@ const MessagingInterface = () => {
                                               d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
                                             />
                                           </svg>
-                                          Signaler comme spam
+                                          {conv.is_spam
+                                            ? "Retirer du spam"
+                                            : "Signaler comme spam"}
                                         </button>
-                                        <button
-                                          onClick={() =>
-                                            handleDeleteConversation(conv.id)
-                                          }
-                                          className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-gray-50 flex items-center"
-                                        >
-                                          <svg
-                                            xmlns="http://www.w3.org/2000/svg"
-                                            className="h-4 w-4 mr-2 text-red-500"
-                                            fill="none"
-                                            viewBox="0 0 24 24"
-                                            stroke="currentColor"
+
+                                        {/* DELETE - UNIQUEMENT SI NOT ARCHIVED ET NOT SPAM */}
+                                        {!conv.is_archived && !conv.is_spam && (
+                                          <button
+                                            onClick={() =>
+                                              handleDeleteConversation(conv.id)
+                                            }
+                                            className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-gray-50 flex items-center border-t border-gray-100"
                                           >
-                                            <path
-                                              strokeLinecap="round"
-                                              strokeLinejoin="round"
-                                              strokeWidth={2}
-                                              d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                                            />
-                                          </svg>
-                                          Supprimer
-                                        </button>
+                                            <svg
+                                              xmlns="http://www.w3.org/2000/svg"
+                                              className="h-4 w-4 mr-2 text-red-500"
+                                              fill="none"
+                                              viewBox="0 0 24 24"
+                                              stroke="currentColor"
+                                            >
+                                              <path
+                                                strokeLinecap="round"
+                                                strokeLinejoin="round"
+                                                strokeWidth={2}
+                                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                              />
+                                            </svg>
+                                            Supprimer
+                                          </button>
+                                        )}
                                       </div>
                                     )}
                                   </div>
@@ -1226,27 +1351,31 @@ const MessagingInterface = () => {
                       </svg>
                     </button>
                   )}
+
                   <div className="flex items-center space-x-2">
                     <div className="relative">
-                      {currentRecipient?.profile_image ? (
+                      {userInfo.photo ? (
                         <img
-                          src={currentRecipient.profile_image}
-                          alt={currentRecipient.nom_utilisateur}
+                          src={userInfo.photo}
+                          alt={userInfo.nom}
                           className="w-10 h-10 rounded-full object-cover"
                         />
                       ) : (
                         <div className="w-10 h-10 flex items-center justify-center bg-gray-200 text-gray-600 font-medium rounded-full">
-                          {getInitials(currentRecipient?.nom_utilisateur || "")}
+                          {getInitials(userInfo.nom || "")}
                         </div>
                       )}
                     </div>
                     <div>
                       <h2 className="font-medium text-gray-800">
-                        {currentRecipient?.nom_utilisateur || "Utilisateur"}
+                        {userInfo.nom} {userInfo.prenom}
                       </h2>
                       <div className="flex items-center">
                         <p className="text-xs text-gray-500">
-                          {currentRecipient?.email || ""}
+                          @
+                          {userInfo.prenom === ""
+                            ? userInfo.nom
+                            : userInfo.username}
                         </p>
                       </div>
                     </div>
@@ -1363,8 +1492,10 @@ const MessagingInterface = () => {
                         </svg>
                       </button>
 
+                      {/* ✅ MENU CONTEXTUEL EN-TÊTE */}
                       {showContactMenu === currentConversation.id && (
                         <div className="absolute right-0 top-12 bg-white border border-gray-200 rounded-lg shadow-lg py-2 z-30 w-48">
+                          {/* ARCHIVE/UNARCHIVE */}
                           <button
                             onClick={() =>
                               handleArchiveConversation(currentConversation.id)
@@ -1385,8 +1516,12 @@ const MessagingInterface = () => {
                                 d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"
                               />
                             </svg>
-                            Archiver
+                            {currentConversation.is_archived
+                              ? "Désarchiver"
+                              : "Archiver"}
                           </button>
+
+                          {/* SPAM/UNSPAM */}
                           <button
                             onClick={() =>
                               handleReportConversation(currentConversation.id)
@@ -1407,30 +1542,39 @@ const MessagingInterface = () => {
                                 d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
                               />
                             </svg>
-                            Signaler comme spam
+                            {currentConversation.is_spam
+                              ? "Retirer du spam"
+                              : "Signaler comme spam"}
                           </button>
-                          <button
-                            onClick={() =>
-                              handleDeleteConversation(currentConversation.id)
-                            }
-                            className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-gray-50 flex items-center"
-                          >
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              className="h-4 w-4 mr-2 text-red-500"
-                              fill="none"
-                              viewBox="0 0 24 24"
-                              stroke="currentColor"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                              />
-                            </svg>
-                            Supprimer
-                          </button>
+
+                          {/* DELETE - UNIQUEMENT SI NOT ARCHIVED ET NOT SPAM */}
+                          {!currentConversation.is_archived &&
+                            !currentConversation.is_spam && (
+                              <button
+                                onClick={() =>
+                                  handleDeleteConversation(
+                                    currentConversation.id
+                                  )
+                                }
+                                className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-gray-50 flex items-center border-t border-gray-100"
+                              >
+                                <svg
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  className="h-4 w-4 mr-2 text-red-500"
+                                  fill="none"
+                                  viewBox="0 0 24 24"
+                                  stroke="currentColor"
+                                >
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    strokeWidth={2}
+                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                  />
+                                </svg>
+                                Supprimer
+                              </button>
+                            )}
                         </div>
                       )}
                     </div>
@@ -1571,9 +1715,9 @@ const MessagingInterface = () => {
                         <div
                           className={`absolute ${
                             isCurrentUserMessage(message)
-                              ? "right-full mr-2"
-                              : "left-full ml-2"
-                          } top-1/2 -translate-y-1/2`}
+                              ? "right-10 mr-36 mt-8"
+                              : "left-10 ml-36 mt-8"
+                          } `}
                         >
                           <input
                             type="checkbox"
@@ -1588,17 +1732,15 @@ const MessagingInterface = () => {
                         message.message_type !== "system" && (
                           <div className="flex-shrink-0 mr-2 mt-1">
                             <div className="w-8 h-8 rounded-full overflow-hidden">
-                              {message.sender?.profile_image ? (
+                              {userInfo.photo ? (
                                 <img
-                                  src={message.sender.profile_image}
-                                  alt={message.sender?.nom_utilisateur || ""}
+                                  src={userInfo.photo}
+                                  alt={userInfo.nom || ""}
                                   className="w-full h-full object-cover"
                                 />
                               ) : (
                                 <div className="w-full h-full bg-gray-200 flex items-center justify-center text-gray-600 text-xs font-medium">
-                                  {getInitials(
-                                    message.sender?.nom_utilisateur || ""
-                                  )}
+                                  {getInitials(userInfo.nom || "")}
                                 </div>
                               )}
                             </div>
@@ -1882,7 +2024,8 @@ const MessagingInterface = () => {
               <div className="w-80 bg-white border-l border-gray-200 p-4 overflow-y-auto">
                 <div className="flex justify-between items-center mb-4">
                   <h3 className="font-semibold text-gray-800">
-                    À propos de {currentRecipient.nom_utilisateur}
+                    À propos de {userInfo.prenom === "" && "@"}
+                    {userInfo.nom} {userInfo.prenom}
                   </h3>
                   <button
                     onClick={() => setShowInfoSidebar(false)}
@@ -1908,33 +2051,31 @@ const MessagingInterface = () => {
                 <div className="space-y-4">
                   <div className="flex items-center justify-center flex-col mb-6">
                     <div className="relative mb-2">
-                      {currentRecipient.profile_image ? (
+                      {userInfo.photo ? (
                         <img
-                          src={currentRecipient.profile_image}
-                          alt={currentRecipient.nom_utilisateur}
+                          src={userInfo.photo}
+                          alt={userInfo.nom}
                           className="w-20 h-20 rounded-full object-cover border-4 border-white shadow"
                         />
                       ) : (
                         <div className="w-20 h-20 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 font-bold text-xl border-4 border-white shadow">
-                          {getInitials(currentRecipient.nom_utilisateur)}
+                          {getInitials(userInfo.nom)}
                         </div>
                       )}
                     </div>
                     <h4 className="font-medium text-gray-800">
-                      {currentRecipient.nom_utilisateur}
+                      @
+                      {userInfo.prenom === ""
+                        ? userInfo.username
+                        : userInfo.username}
                     </h4>
-                    <p className="text-sm text-gray-500">
-                      {currentRecipient.email}
-                    </p>
                   </div>
 
                   {/* Rôle */}
                   <div className="bg-gray-50 rounded-lg p-3">
                     <div className="text-sm text-gray-500">Rôle</div>
                     <div className="font-medium text-gray-800">
-                      {currentRecipient.role === "client"
-                        ? "Client"
-                        : "Freelance"}
+                      {userInfo.prenom === "" ? "Client" : "Freelance"}
                     </div>
                   </div>
 
@@ -1950,18 +2091,10 @@ const MessagingInterface = () => {
                     </div>
                   </div>
 
-                  {currentRecipient.phone && (
-                    <div className="bg-gray-50 rounded-lg p-3">
-                      <div className="text-sm text-gray-500">Téléphone</div>
-                      <div className="font-medium text-gray-800">
-                        {currentRecipient.phone}
-                      </div>
-                    </div>
-                  )}
-
                   <div className="pt-4 border-t border-gray-200">
                     <div className="text-sm text-gray-600 mb-2">Options</div>
                     <div className="flex flex-col space-y-2">
+                      {/* ARCHIVE/UNARCHIVE */}
                       <button
                         onClick={() =>
                           handleArchiveConversation(currentConversation.id)
@@ -1982,8 +2115,12 @@ const MessagingInterface = () => {
                             d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"
                           />
                         </svg>
-                        Archiver
+                        {currentConversation.is_archived
+                          ? "Désarchiver"
+                          : "Archiver"}
                       </button>
+
+                      {/* SPAM/UNSPAM */}
                       <button
                         onClick={() =>
                           handleReportConversation(currentConversation.id)
@@ -2004,30 +2141,37 @@ const MessagingInterface = () => {
                             d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
                           />
                         </svg>
-                        Signaler
+                        {currentConversation.is_spam
+                          ? "Retirer du spam"
+                          : "Signaler"}
                       </button>
-                      <button
-                        onClick={() =>
-                          handleDeleteConversation(currentConversation.id)
-                        }
-                        className="bg-red-100 text-red-700 px-4 py-2 rounded text-sm hover:bg-red-200 transition-colors flex items-center"
-                      >
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          className="h-4 w-4 mr-2 text-red-500"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                          stroke="currentColor"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                          />
-                        </svg>
-                        Supprimer
-                      </button>
+
+                      {/* DELETE - UNIQUEMENT SI NOT ARCHIVED ET NOT SPAM */}
+                      {!currentConversation.is_archived &&
+                        !currentConversation.is_spam && (
+                          <button
+                            onClick={() =>
+                              handleDeleteConversation(currentConversation.id)
+                            }
+                            className="bg-red-100 text-red-700 px-4 py-2 rounded text-sm hover:bg-red-200 transition-colors flex items-center"
+                          >
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              className="h-4 w-4 mr-2 text-red-500"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                              />
+                            </svg>
+                            Supprimer
+                          </button>
+                        )}
                     </div>
                   </div>
                 </div>
