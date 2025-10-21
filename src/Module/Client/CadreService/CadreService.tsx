@@ -1,310 +1,393 @@
-"use client";
-import React, { useState, useEffect } from "react";
 import {
-  Star,
-  Heart,
-  CheckCircle,
-  Play,
   Pause,
-  Volume2,
-  VolumeX,
+  Play,
   ChevronLeft,
   ChevronRight,
+  Heart,
+  Star,
 } from "lucide-react";
+import React, { useEffect, useRef, useState } from "react";
 
-interface Editor {
+interface ServiceImage {
+  id: string;
+  name: string;
+  url: string;
+  path: string;
+  type: string;
+}
+
+interface Seller {
   name: string;
   level: string;
-  verified: boolean;
-  pro: boolean;
-  topRated: boolean;
-  online: boolean;
-  fastResponse: boolean;
-  frenchSpeaker: boolean;
+  isTopRated: boolean;
+  isOnline: boolean;
+  photo_url?: string;
 }
-
-interface Media {
+interface Service {
   id: string;
-  type: "image" | "video";
-  url: string;
-  thumbnail?: string;
+  title: string;
+  description: string;
+  category: string;
+  price: number;
+  rating: number;
+  reviews: number;
+  images: ServiceImage[];
+  video_url?: string;
+  hasVideo?: boolean;
+  freelance_id: string;
+  seller: Seller;
+  badges: string[];
 }
-
 interface ServiceCardProps {
-  service: {
-    id: string;
-    title: string;
-    editor: Editor;
-    rating: number;
-    reviewCount: number;
-    startingPrice: number;
-    isFavorited: boolean;
-    videoType?: string;
-    deliveryTime?: string;
-    media: Media[];
-    publishedDays?: number;
-  };
-  onFavoriteToggle?: (id: string) => void;
-  showPublishedDays?: boolean;
-  className?: string;
+  service: Service;
+  onFavorite: (serviceId: string) => void;
+  isFavorited: boolean;
 }
 
-const ServiceCard: React.FC<ServiceCardProps> = ({
+export const ServiceCard: React.FC<ServiceCardProps> = ({
   service,
-  onFavoriteToggle,
-  showPublishedDays = true,
-  className = "",
+  onFavorite,
+  isFavorited,
 }) => {
-  const [mediaState, setMediaState] = useState({
-    currentIndex: 0,
-    isPlaying: false,
-    isMuted: true,
-  });
+  const [isPlaying, setIsPlaying] = useState<boolean>(false);
+  const [isHovered, setIsHovered] = useState<boolean>(false);
+  const [currentMediaIndex, setCurrentMediaIndex] = useState<number>(0);
+  const [showVideo, setShowVideo] = useState<boolean>(true);
+  const videoRef = useRef<HTMLVideoElement>(null);
 
-  const getPublishedDaysText = () => {
-    if (!service.publishedDays && service.publishedDays !== 0) return null;
+  // Préparer les médias: vidéo en premier si disponible, puis images
+  const medias = React.useMemo(() => {
+    const mediaArray: Array<{ type: string; url: string; id: string }> = [];
 
-    if (service.publishedDays === 0) return "Publié aujourd'hui";
-    if (service.publishedDays === 1) return "Publié hier";
-    if (service.publishedDays < 7)
-      return `Publié il y a ${service.publishedDays} jours`;
-    if (service.publishedDays < 30) {
-      const weeks = Math.floor(service.publishedDays / 7);
-      return `Publié il y a ${weeks} semaine${weeks > 1 ? "s" : ""}`;
+    // Ajouter la vidéo en premier si disponible
+    if (service.video_url) {
+      mediaArray.push({
+        type: "video",
+        url: service.video_url,
+        id: "video",
+      });
     }
-    const months = Math.floor(service.publishedDays / 30);
-    return `Publié il y a ${months} mois${months > 1 ? "s" : ""}`;
-  };
 
-  const updateMediaState = (updates: Partial<typeof mediaState>) => {
-    setMediaState((prev) => ({ ...prev, ...updates }));
-  };
+    // Ajouter les images
+    if (service.images && service.images.length > 0) {
+      service.images.forEach((image: ServiceImage, index: number) => {
+        mediaArray.push({
+          type: "image",
+          url: image.url,
+          id: `image-${index}`,
+        });
+      });
+    }
 
-  const nextMedia = () => {
-    const newIndex =
-      mediaState.currentIndex < service.media.length - 1
-        ? mediaState.currentIndex + 1
-        : 0;
-    updateMediaState({ currentIndex: newIndex });
-  };
+    return mediaArray;
+  }, [service.video_url, service.images]);
 
-  const prevMedia = () => {
-    const newIndex =
-      mediaState.currentIndex > 0
-        ? mediaState.currentIndex - 1
-        : service.media.length - 1;
-    updateMediaState({ currentIndex: newIndex });
-  };
+  const totalMedias = medias.length;
 
-  const togglePlay = () => {
-    updateMediaState({ isPlaying: !mediaState.isPlaying });
-  };
+  // Gérer la lecture/pause de la vidéo
+  useEffect(() => {
+    if (videoRef.current) {
+      if (
+        isPlaying &&
+        showVideo &&
+        currentMediaIndex === 0 &&
+        service.video_url
+      ) {
+        videoRef.current.play().catch(console.error);
+      } else {
+        videoRef.current.pause();
+      }
+    }
+  }, [isPlaying, showVideo, currentMediaIndex, service.video_url]);
 
-  const toggleMute = () => {
-    updateMediaState({ isMuted: !mediaState.isMuted });
-  };
-
-  const handleFavoriteClick = () => {
-    if (onFavoriteToggle) {
-      onFavoriteToggle(service.id);
+  const nextMedia = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (currentMediaIndex === 0 && service.video_url && isPlaying) {
+      setIsPlaying(false);
+    }
+    setCurrentMediaIndex((prev) => (prev + 1) % totalMedias);
+    // Si on passe à une image après la vidéo, désactiver le mode vidéo
+    if (currentMediaIndex === 0 && service.video_url) {
+      setShowVideo(false);
     }
   };
 
-  const currentMedia = service.media[mediaState.currentIndex];
+  const prevMedia = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (currentMediaIndex === 0 && service.video_url && isPlaying) {
+      setIsPlaying(false);
+    }
+    setCurrentMediaIndex((prev) => (prev - 1 + totalMedias) % totalMedias);
+    // Si on revient à la vidéo, réactiver le mode vidéo
+    if (
+      (currentMediaIndex - 1 + totalMedias) % totalMedias === 0 &&
+      service.video_url
+    ) {
+      setShowVideo(true);
+    }
+  };
+
+  const togglePlay = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (currentMediaIndex === 0 && service.video_url) {
+      setIsPlaying(!isPlaying);
+      setShowVideo(true);
+    }
+  };
+
+  const switchToImages = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setShowVideo(false);
+    setIsPlaying(false);
+    // Si on est sur la vidéo, passer à la première image
+    if (currentMediaIndex === 0 && service.video_url && medias.length > 1) {
+      setCurrentMediaIndex(1);
+    }
+  };
+
+  const switchToVideo = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setShowVideo(true);
+    setCurrentMediaIndex(0);
+  };
+
+  const currentMedia = medias[currentMediaIndex];
+  const isVideo = currentMedia?.type === "video" && showVideo;
+  const hasMultipleMedias = totalMedias > 1;
 
   return (
     <div
-      className={`bg-white rounded-xl shadow-sm hover:shadow-xl transition-all duration-300 overflow-hidden group border border-gray-100 ${className}`}
+      className="group bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 cursor-pointer border border-gray-100"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => {
+        setIsHovered(false);
+        setIsPlaying(false);
+      }}
     >
-      {/* Media Carousel */}
-      <div className="relative h-48 bg-gray-900 overflow-hidden rounded-t-xl">
-        {currentMedia?.type === "video" ? (
-          <div className="relative h-full">
-            <video
-              className="w-full h-full object-cover"
-              poster={currentMedia.thumbnail}
-              muted={mediaState.isMuted}
-              loop
-            >
-              <source src={currentMedia.url} type="video/mp4" />
-            </video>
-
-            {/* Contrôles vidéo */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent">
-              <div className="absolute bottom-3 left-3 flex items-center space-x-2">
-                <button
-                  onClick={togglePlay}
-                  className="bg-white/20 backdrop-blur-sm rounded-full p-2 hover:bg-white/30 transition-colors"
-                >
-                  {mediaState.isPlaying ? (
-                    <Pause className="h-4 w-4 text-white" />
-                  ) : (
-                    <Play className="h-4 w-4 text-white fill-current" />
-                  )}
-                </button>
-                <button
-                  onClick={toggleMute}
-                  className="bg-white/20 backdrop-blur-sm rounded-full p-2 hover:bg-white/30 transition-colors"
-                >
-                  {mediaState.isMuted ? (
-                    <VolumeX className="h-4 w-4 text-white" />
-                  ) : (
-                    <Volume2 className="h-4 w-4 text-white" />
-                  )}
-                </button>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <img
-            src={
-              currentMedia?.url ||
-              `https://via.placeholder.com/400x225/6366f1/white?text=Service+Preview`
-            }
-            alt="Service preview"
-            className="w-full h-full object-cover"
-          />
-        )}
-
-        {/* Navigation du carrousel */}
-        {service.media.length > 1 && (
+      {/* Carousel Image/Vidéo amélioré */}
+      <div className="relative aspect-video overflow-hidden bg-gray-100">
+        {currentMedia && (
           <>
-            <button
-              onClick={prevMedia}
-              className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/20 backdrop-blur-sm rounded-full p-1.5 hover:bg-white/30 transition-colors"
-            >
-              <ChevronLeft className="h-4 w-4 text-white" />
-            </button>
-            <button
-              onClick={nextMedia}
-              className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/20 backdrop-blur-sm rounded-full p-1.5 hover:bg-white/30 transition-colors"
-            >
-              <ChevronRight className="h-4 w-4 text-white" />
-            </button>
-
-            {/* Indicateurs */}
-            <div className="absolute bottom-2 right-2 flex space-x-1">
-              {service.media.map((_, index) => (
-                <div
-                  key={index}
-                  className={`w-2 h-2 rounded-full transition-colors ${
-                    index === mediaState.currentIndex
-                      ? "bg-white"
-                      : "bg-white/50"
-                  }`}
-                />
-              ))}
-            </div>
+            {isVideo ? (
+              <video
+                ref={videoRef}
+                src={currentMedia.url}
+                className="w-full h-full object-cover"
+                muted
+                loop
+                playsInline
+                onClick={togglePlay}
+              />
+            ) : (
+              <img
+                src={currentMedia.url}
+                alt={service.title}
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+              />
+            )}
           </>
         )}
 
-        {/* Badge du type de média */}
-        <div className="absolute top-2 left-2">
-          <span className="bg-black/60 text-white text-xs px-2 py-1 rounded-full backdrop-blur-sm">
-            {service.media.length > 1
-              ? `${mediaState.currentIndex + 1}/${service.media.length}`
-              : "1"}
-          </span>
-        </div>
+        {/* Overlay de contrôle vidéo */}
+        {isVideo && isHovered && (
+          <div
+            className="absolute inset-0 bg-black/40 flex items-center justify-center transition-opacity duration-300"
+            onClick={togglePlay}
+          >
+            <button className="w-16 h-16 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center hover:scale-110 transition-transform shadow-lg">
+              {isPlaying ? (
+                <Pause className="w-6 h-6 text-gray-900" />
+              ) : (
+                <Play className="w-6 h-6 text-gray-900 ml-1" />
+              )}
+            </button>
+          </div>
+        )}
 
-        {/* Badge des jours de publication */}
-        {showPublishedDays && service.publishedDays !== undefined && (
-          <div className="absolute top-2 right-2">
-            <span className="bg-blue-600 text-white text-xs px-2 py-1 rounded-full backdrop-blur-sm font-medium">
-              {getPublishedDaysText()}
-            </span>
+        {/* Boutons de navigation carousel - visible au hover */}
+        {hasMultipleMedias && isHovered && (
+          <>
+            <button
+              onClick={prevMedia}
+              className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-white transition-colors shadow-md z-10"
+            >
+              <ChevronLeft className="w-5 h-5 text-gray-900" />
+            </button>
+            <button
+              onClick={nextMedia}
+              className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-white transition-colors shadow-md z-10"
+            >
+              <ChevronRight className="w-5 h-5 text-gray-900" />
+            </button>
+          </>
+        )}
+
+        {/* Indicateurs de carousel */}
+        {hasMultipleMedias && (
+          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1 z-10">
+            {medias.map((_, index: number) => (
+              <button
+                key={index}
+                onClick={(e: React.MouseEvent) => {
+                  e.stopPropagation();
+                  if (
+                    currentMediaIndex === 0 &&
+                    service.video_url &&
+                    isPlaying
+                  ) {
+                    setIsPlaying(false);
+                  }
+                  setCurrentMediaIndex(index);
+                  if (index === 0 && service.video_url) {
+                    setShowVideo(true);
+                  } else if (index > 0 && service.video_url) {
+                    setShowVideo(false);
+                  }
+                }}
+                className={`w-1.5 h-1.5 rounded-full transition-all ${
+                  index === currentMediaIndex
+                    ? "bg-white w-4"
+                    : "bg-white/50 hover:bg-white/80"
+                }`}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* Boutons de switch vidéo/images */}
+        {service.video_url &&
+          service.images &&
+          service.images.length > 0 &&
+          isHovered && (
+            <div className="absolute top-3 left-3 flex gap-2 z-10">
+              <button
+                onClick={switchToVideo}
+                className={`px-2 py-1 text-xs rounded-full backdrop-blur-sm transition-all ${
+                  showVideo
+                    ? "bg-blue-500 text-white"
+                    : "bg-white/90 text-gray-700 hover:bg-white"
+                }`}
+              >
+                Vidéo
+              </button>
+              <button
+                onClick={switchToImages}
+                className={`px-2 py-1 text-xs rounded-full backdrop-blur-sm transition-all ${
+                  !showVideo
+                    ? "bg-blue-500 text-white"
+                    : "bg-white/90 text-gray-700 hover:bg-white"
+                }`}
+              >
+                Images
+              </button>
+            </div>
+          )}
+
+        {/* Bouton favori */}
+        <button
+          onClick={(e: React.MouseEvent) => {
+            e.stopPropagation();
+            onFavorite(service.id);
+          }}
+          className="absolute top-3 right-3 w-9 h-9 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-white transition-colors shadow-md z-10"
+        >
+          <Heart
+            className={`w-5 h-5 ${
+              isFavorited ? "fill-red-500 text-red-500" : "text-gray-700"
+            }`}
+          />
+        </button>
+
+        {/* Badge online */}
+        {service.seller.isOnline && (
+          <div className="absolute top-3 left-3 px-2 py-1 bg-white/90 backdrop-blur-sm rounded-full text-xs font-medium text-green-600 flex items-center gap-1 z-10">
+            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+            En ligne
           </div>
         )}
       </div>
 
-      <div className="p-5">
-        {/* Editor Info */}
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center">
-            <div
-              className={`w-8 h-8 rounded-full mr-3 border-2 flex items-center justify-center text-xs font-bold text-white ${
-                service.editor.online
-                  ? "bg-green-500 border-green-400"
-                  : "bg-gray-400 border-gray-300"
-              }`}
-            >
-              {service.editor.name.charAt(0)}
-            </div>
-            <div>
-              <div className="flex items-center">
-                <span className="text-sm text-gray-600 mr-1">Par</span>
-                <span className="font-semibold text-gray-900 text-sm">
-                  {service.editor.name}
+      {/* Contenu */}
+      <div className="p-4">
+        {/* Vendeur avec photo réelle */}
+        <div className="flex items-center gap-2 mb-3">
+          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white font-bold text-sm overflow-hidden">
+            {service.seller.photo_url ? (
+              <img
+                src={service.seller.photo_url}
+                alt={service.seller.name}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              service.seller.name.charAt(0).toUpperCase()
+            )}
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <a
+                href={`/Profil/?id=${service.freelance_id}`}
+                className="text-sm hover:underline font-semibold text-gray-900 truncate"
+              >
+                {service.seller.name}
+              </a>
+              {service.seller.isTopRated && (
+                <span className="px-2 py-0.5 bg-orange-100 text-orange-700 text-xs font-bold rounded flex items-center gap-1">
+                  <Star className="w-3 h-3 fill-current" />
+                  Top
                 </span>
-                {service.editor.verified && (
-                  <CheckCircle className="h-3 w-3 text-green-500 ml-1" />
-                )}
-              </div>
-              {service.editor.topRated && (
-                <div className="flex items-center mt-1">
-                  <span className="text-xs bg-gradient-to-r from-yellow-400 to-orange-500 text-white px-2 py-0.5 rounded-full font-semibold flex items-center">
-                    Top Rated
-                    <Star className="h-2 w-2 ml-1 fill-current" />
-                  </span>
-                </div>
               )}
             </div>
+            <span className="text-xs text-gray-500">
+              {service.seller.level}
+            </span>
           </div>
-
-          <button
-            onClick={handleFavoriteClick}
-            className="p-2 rounded-full hover:bg-gray-100 transition-colors group"
-          >
-            <Heart
-              className={`h-5 w-5 transition-colors ${
-                service.isFavorited
-                  ? "fill-red-500 text-red-500"
-                  : "text-gray-400 group-hover:text-red-400"
-              }`}
-            />
-          </button>
         </div>
 
-        {/* Service Title */}
+        {/* Titre */}
         <a
-          href={`/services/${service.id}`}
-          className="font-semibold text-gray-900 mb-4 line-clamp-2 hover:text-blue-600 cursor-pointer transition-colors group-hover:text-blue-600 leading-tight block"
+          href={`/DetailService/?id=${service.id}`}
+          className="text-sm font-medium text-gray-900 mb-3 line-clamp-2 group-hover:text-blue-600 transition-colors"
         >
           {service.title}
         </a>
 
-        {/* Rating & Starting Price */}
+        {/* Badges */}
+        {service.badges.length > 0 && (
+          <div className="flex flex-wrap gap-1 mb-3">
+            {service.badges.map((badge: string, index: number) => (
+              <span
+                key={index}
+                className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded"
+              >
+                {badge}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {/* Note et Prix */}
         <div className="flex items-center justify-between">
-          <div className="flex items-center bg-yellow-50 rounded-lg px-2 py-1">
-            <Star className="h-4 w-4 text-yellow-500 fill-current mr-1" />
-            <span className="text-sm font-bold text-gray-900 mr-1">
-              {service.rating.toFixed(1)}
+          <div className="flex items-center gap-1">
+            <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+            <span className="text-sm font-bold text-gray-900">
+              {service.rating}
             </span>
-            <span className="text-sm text-gray-600">
-              ({service.reviewCount})
+            <span className="text-sm text-gray-500">
+              (
+              {service.reviews > 1000
+                ? `${Math.floor(service.reviews / 1000)}k+`
+                : service.reviews}
+              )
             </span>
           </div>
-
           <div className="text-right">
-            <div className="text-sm text-gray-500">À partir de</div>
+            <div className="text-xs text-gray-500">À partir de</div>
             <div className="text-lg font-bold text-gray-900">
-              €{service.startingPrice}
+              {service.price} $US
             </div>
-          </div>
-        </div>
-
-        {/* Informations supplémentaires */}
-        <div className="mt-3 pt-3 border-t border-gray-100">
-          <div className="flex justify-between items-center text-xs text-gray-500">
-            <span>{service.deliveryTime || "Livraison rapide"}</span>
-            {service.editor.fastResponse && (
-              <span className="text-green-600 font-medium">Réponse rapide</span>
-            )}
           </div>
         </div>
       </div>
     </div>
   );
 };
-
-export default ServiceCard;

@@ -554,7 +554,7 @@ export default function HomePage() {
   const [searchTerm, setSearchTerm] = useState<string>("");
 
   const { services, isLoading, error } = useServices();
-  const { freelances } = useFreelances();
+  const { freelances, getPhotoProfileUrl } = useFreelances();
   const { currentSession } = useAuth();
   const isLoggedIn =
     currentSession.isAuthenticated && currentSession.userProfile;
@@ -588,12 +588,14 @@ export default function HomePage() {
           level: "Level 2", // À adapter selon votre logique
           isTopRated: Math.random() > 0.5, // À adapter
           isOnline: Math.random() > 0.3, // À adapter
-          photo_url: freelance?.photo_url,
+          photo_url: freelance?.photo_url
+            ? getPhotoProfileUrl(freelance?.photo_url)
+            : "",
         },
         badges: service.tags?.slice(0, 2) || [], // Utiliser les tags comme badges
       };
     });
-  }, [services, freelances]);
+  }, [services, freelances, getPhotoProfileUrl]);
 
   if (isLoading) {
     return (

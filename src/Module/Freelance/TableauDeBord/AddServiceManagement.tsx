@@ -20,6 +20,7 @@ import {
   Package,
   FAQ,
   Requirement,
+  PackageFeature,
   ServiceImage,
   ServiceDocument,
 } from "@/Context/Freelance/ContextService";
@@ -155,6 +156,9 @@ const AddServiceManagement: React.FC = () => {
         deliveryDays: "",
         revisions: "",
         description: "",
+        features: [],
+        highlights: [],
+        popular: false,
       },
     ],
     description: "",
@@ -722,6 +726,9 @@ const AddServiceManagement: React.FC = () => {
             deliveryDays: "",
             revisions: "",
             description: "",
+            features: [], // ← AJOUTER
+            highlights: [], // ← AJOUTER
+            popular: false, // ← AJOUTER
           },
         ],
         description: "",
@@ -1157,6 +1164,11 @@ const AddServiceManagement: React.FC = () => {
                         <h3 className="text-lg font-bold text-gray-900">
                           Forfait {pkg.name}
                         </h3>
+                        {pkg.popular && (
+                          <span className="inline-block bg-blue-100 text-blue-800 text-xs px-3 py-1 rounded-full font-bold ml-2">
+                            ⭐ POPULAIRE
+                          </span>
+                        )}
                         {formData.packages.length > 1 && (
                           <button
                             onClick={() =>
@@ -1238,7 +1250,75 @@ const AddServiceManagement: React.FC = () => {
                           />
                         </div>
                       </div>
+                      {/* Highlights */}
+                      <div className="mb-4">
+                        <label className="block text-sm font-bold text-gray-900 mb-2">
+                          Points clés (un par ligne)
+                        </label>
+                        <textarea
+                          rows={2}
+                          placeholder="Ex: 20 photos&#10;Éclairage standard"
+                          value={(pkg.highlights || []).join("\n")}
+                          onChange={(e) => {
+                            const newPackages = [...formData.packages];
+                            newPackages[index].highlights = e.target.value
+                              .split("\n")
+                              .filter((h) => h.trim());
+                            setFormData({ ...formData, packages: newPackages });
+                          }}
+                          className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
 
+                      {/* Badge Popular */}
+                      <div className="mb-4">
+                        <label className="flex items-center">
+                          <input
+                            type="checkbox"
+                            checked={pkg.popular || false}
+                            onChange={(e) => {
+                              const newPackages = [...formData.packages];
+                              newPackages[index].popular = e.target.checked;
+                              setFormData({
+                                ...formData,
+                                packages: newPackages,
+                              });
+                            }}
+                            className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 mr-2"
+                          />
+                          <span className="text-sm font-medium text-gray-900">
+                            Marquer comme populaire
+                          </span>
+                        </label>
+                      </div>
+
+                      {/* Features */}
+                      <div className="mb-4">
+                        <label className="block text-sm font-bold text-gray-900 mb-2">
+                          Caractéristiques détaillées
+                        </label>
+                        <div className="space-y-2 bg-gray-100 p-3 rounded">
+                          {(pkg.features || []).map((feature, fIdx) => (
+                            <div
+                              key={feature.id}
+                              className="flex gap-2 text-sm"
+                            >
+                              <span>{feature.icon || "•"}</span>
+                              <span className="text-gray-700">
+                                {feature.label}
+                              </span>
+                              <span className="text-gray-500">
+                                ({feature.value}
+                                {feature.unit ? ` ${feature.unit}` : ""})
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">
+                          Les features se remplissent automatiquement selon le
+                          service
+                        </p>
+                      </div>
                       <div>
                         <label className="block text-sm font-bold text-gray-900 mb-2">
                           Description du forfait *
@@ -1278,6 +1358,9 @@ const AddServiceManagement: React.FC = () => {
                               deliveryDays: "",
                               revisions: "",
                               description: "",
+                              features: [], // ← AJOUTER
+                              highlights: [], // ← AJOUTER
+                              popular: false, // ← AJOUTER
                             },
                           ],
                         });
@@ -2721,6 +2804,11 @@ const AddServiceManagement: React.FC = () => {
                                 <h5 className="font-semibold text-gray-900">
                                   {pkg.name}
                                 </h5>
+                                {pkg.popular && (
+                                  <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full font-bold ml-2">
+                                    ⭐ POPULAIRE
+                                  </span>
+                                )}
                                 <span className="text-lg font-bold text-green-600">
                                   {pkg.price ? `${pkg.price}` : "Non défini"}
                                 </span>
@@ -2742,6 +2830,31 @@ const AddServiceManagement: React.FC = () => {
                                     {pkg.revisions || "Non défini"}
                                   </span>
                                 </div>
+                                {pkg.highlights &&
+                                  pkg.highlights.length > 0 && (
+                                    <div className="text-sm text-gray-600 mt-2">
+                                      <p className="font-medium mb-1">
+                                        Points clés:
+                                      </p>
+                                      {pkg.highlights.map((h, idx) => (
+                                        <p key={idx}>✓ {h}</p>
+                                      ))}
+                                    </div>
+                                  )}
+
+                                {pkg.features && pkg.features.length > 0 && (
+                                  <div className="text-sm text-gray-600 mt-2">
+                                    <p className="font-medium mb-1">
+                                      Caractéristiques:
+                                    </p>
+                                    {pkg.features.map((f, idx) => (
+                                      <p key={idx}>
+                                        {f.icon || "•"} {f.label}: {f.value}
+                                        {f.unit ? ` ${f.unit}` : ""}
+                                      </p>
+                                    ))}
+                                  </div>
+                                )}
                               </div>
                               {pkg.description && (
                                 <p className="text-sm text-gray-700 mt-2">
@@ -2766,8 +2879,7 @@ const AddServiceManagement: React.FC = () => {
                               className="prose prose-sm max-w-none"
                               dangerouslySetInnerHTML={{
                                 __html:
-                                  formData.description.substring(0, 100) +
-                                  "...",
+                                  formData.description.substring(0, 50) + "...",
                               }}
                             />
                           ) : (

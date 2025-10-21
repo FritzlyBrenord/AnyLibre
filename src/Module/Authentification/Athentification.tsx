@@ -16,7 +16,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/Context/ContextUser";
 
 // Fonctions de validation sécurisées
@@ -140,6 +140,7 @@ export default function AuthPage() {
   } = useAuth();
   const router = useRouter();
 
+  const searchParams = useSearchParams();
   const [isLogin, setIsLogin] = useState(true);
   const [signupStep, setSignupStep] = useState(1);
   const [showPassword, setShowPassword] = useState(false);
@@ -169,14 +170,6 @@ export default function AuthPage() {
     email: false,
     username: false,
   });
-
-  // Rediriger si l'utilisateur est déjà connecté
-  useEffect(() => {
-    if (currentSession.isAuthenticated) {
-      console.log("🔄 Redirection vers l'accueil, utilisateur authentifié");
-      router.push("/Accueil");
-    }
-  }, [currentSession.isAuthenticated, router]);
 
   // Afficher les erreurs du contexte d'authentification
   useEffect(() => {
@@ -319,6 +312,11 @@ export default function AuthPage() {
 
     try {
       console.log("🔐 Tentative de connexion:", formData.email);
+
+      // ✅ RÉCUPÉRER L'URL DE REDIRECTION
+      const redirectUrl = searchParams.get("redirect");
+      console.log("🔍 URL de redirection:", redirectUrl);
+
       const result = await Login(formData.email, formData.password);
 
       console.log("📋 Résultat connexion:", result);
@@ -326,8 +324,18 @@ export default function AuthPage() {
       if (result.success) {
         console.log("✅ Connexion réussie");
         setError("");
+
         // Réinitialiser le formulaire
         setFormData({ email: "", password: "", username: "" });
+
+        // ✅ REDIRECTION IMMÉDIATE ET FORCÉE
+        if (redirectUrl) {
+          console.log("🚀 Redirection vers:", redirectUrl);
+          window.location.href = redirectUrl; // Forcer la redirection
+        } else {
+          console.log("🚀 Redirection vers /Accueil");
+          window.location.href = "/Accueil";
+        }
       } else {
         setError(result.message);
         console.error("❌ Erreur connexion:", result.message);
@@ -339,7 +347,6 @@ export default function AuthPage() {
       setLoading(false);
     }
   };
-
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -465,16 +472,15 @@ export default function AuthPage() {
     { name: "Sécurité", icon: <Lock className="text-amber-500" /> },
   ];
 
-  if (currentSession.isAuthenticated) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-100 to-slate-300">
-        <div className="text-center">
-          <Loader2 className="w-12 h-12 animate-spin mx-auto text-blue-500" />
-          <p className="mt-4 text-gray-600">Redirection vers l'accueil...</p>
-        </div>
-      </div>
-    );
-  }
+  // ✅ Si déjà connecté, rediriger immédiatement
+  useEffect(() => {
+    if (currentSession.isAuthenticated) {
+      console.log("✅ Utilisateur déjà connecté, redirection immédiate");
+      const redirectUrl = searchParams.get("redirect");
+      const destination = redirectUrl || "/Accueil";
+      window.location.href = destination;
+    }
+  }, [currentSession.isAuthenticated, searchParams]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-100 to-slate-300 relative overflow-hidden py-20">
@@ -491,13 +497,6 @@ export default function AuthPage() {
       <div className="z-10 w-full max-w-5xl px-4 py-8 flex flex-col md:flex-row">
         {/* Section gauche - Branding */}
         <div className="hidden md:flex md:w-1/2 flex-col justify-center items-center p-8 rounded-l-2xl bg-white backdrop-blur-xl text-slate-700 border-r border-slate-200">
-          <div className="mb-10">
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-500 to-purple-600 bg-clip-text text-transparent">
-              ConnexionPro
-            </h1>
-            <p className="text-slate-600 mt-2">Plateforme sécurisée</p>
-          </div>
-
           <div className="mb-10 w-full">
             <div className="relative flex flex-col items-center">
               <div className="w-72 h-72 bg-gradient-to-br from-blue-50 to-purple-100 rounded-2xl p-6 backdrop-blur-sm border border-slate-200 shadow-xl relative overflow-hidden">

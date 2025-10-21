@@ -26,12 +26,25 @@ export type StatutService =
   | "a_modifier"
   | "suspendre";
 
+export interface PackageFeature {
+  id: string;
+  label: string;
+  value: string | number | boolean;
+  type: "text" | "number" | "boolean";
+  icon?: string;
+  unit?: string;
+}
+
 export interface Package {
-  name: string;
+  id?: string;
+  name: "Basic" | "Standard" | "Premium";
   price: string;
   deliveryDays: string;
   revisions: string;
   description: string;
+  features?: PackageFeature[];
+  highlights?: string[];
+  popular?: boolean;
 }
 
 export interface FAQ {
@@ -623,8 +636,6 @@ export const ServicesProvider: React.FC<ServicesProviderProps> = ({
 
   // ==================== AJOUTER SERVICE ====================
 
-  // ==================== AJOUTER SERVICE (MODIFIÉ) ====================
-
   const ajouterService = async (
     data: ServiceFormData
   ): Promise<Service | null> => {
@@ -735,7 +746,7 @@ export const ServicesProvider: React.FC<ServicesProviderProps> = ({
     return true;
   };
 
-  // ==================== MODIFIER SERVICE (MODIFIÉ) ====================
+  // ==================== MODIFIER SERVICE ====================
 
   const modifierService = async (
     id: string,

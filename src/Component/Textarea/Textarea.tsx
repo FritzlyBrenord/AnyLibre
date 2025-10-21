@@ -244,7 +244,7 @@ export default function MarkdownEditor({
               fontSize: "15px",
             }}
             placeholder="Utilisez le format Markdown pour formater votre texte...
-            
+
 Exemple :
 **Service de développement web** professionnel
 

@@ -1,4 +1,5 @@
 import { supabase } from "@/Config/supabase";
+import { supabaseLogin } from "@/Config/supabase-client";
 import { RealtimeChannel } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 
@@ -348,7 +349,7 @@ export const UpdateData = async (table: string, id: any, newValeur: object) => {
 };
 
 export const SignUp = async (email: string, password: string) => {
-  const { data, error } = await supabase.auth.signUp({ email, password });
+  const { data, error } = await supabaseLogin.auth.signUp({ email, password });
 
   try {
     if (!error) {
@@ -363,22 +364,16 @@ export const SignUp = async (email: string, password: string) => {
 
 export const SignIn = async (email: string, password: string) => {
   try {
-    const { data, error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabaseLogin.auth.signInWithPassword({
       email,
       password,
     });
 
     if (error) {
-      // Retourner l'erreur avec ses détails
       return { success: false, error };
     }
 
-    if (data.session) {
-      document.cookie = `sb-access-token=${data.session.access_token}; path=/`;
-      document.cookie = `sb-refresh-token=${data.session.refresh_token}; path=/`;
-    }
-
-    return { success: true };
+    return { success: true, data };
   } catch (err) {
     console.error("Erreur lors de la connexion:", err);
     return {
@@ -389,7 +384,7 @@ export const SignIn = async (email: string, password: string) => {
 };
 
 export const SignOut = async () => {
-  const { error } = await supabase.auth.signOut();
+  const { error } = await supabaseLogin.auth.signOut();
   try {
     if (!error) {
       return true;
@@ -402,7 +397,7 @@ export const SignOut = async () => {
 };
 
 export const getUser = async () => {
-  const { data, error } = await supabase.auth.getUser();
+  const { data, error } = await supabaseLogin.auth.getUser();
 
   if (error) {
     console.error(
@@ -416,7 +411,7 @@ export const getUser = async () => {
 };
 
 export const UtilisateurConnecter = async () => {
-  const { data: session } = await supabase.auth.getSession();
+  const { data: session } = await supabaseLogin.auth.getSession();
   if (!session) {
     NextResponse.redirect("/Compte");
   }
@@ -425,7 +420,7 @@ export const UtilisateurConnecter = async () => {
 
 export const UpdateEmail = async (newValeur: string) => {
   try {
-    const { data, error } = await supabase.auth.updateUser({
+    const { data, error } = await supabaseLogin.auth.updateUser({
       email: newValeur,
     });
     if (error) {

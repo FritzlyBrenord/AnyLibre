@@ -18,12 +18,135 @@ import {
 import React, { useState, useEffect } from "react";
 import { useAuth } from "@/Context/ContextUser";
 import { useFreelances } from "@/Context/Freelance/FreelanceContext";
+import { useMessaging } from "@/Context/MessageContext";
 import { useRouter } from "next/navigation";
+
+// Interface pour User2
+interface User2 {
+  nom: string;
+  prenom: string;
+  username: string;
+  photo: string;
+}
+
+// Hook personnalisé pour les infos utilisateur
+const useUserInfo = (conversationId?: string): User2 => {
+  const { conversations } = useMessaging();
+  const { GetUserById, currentSession } = useAuth();
+  const { getFreelanceByUserId, getPhotoProfileUrl } = useFreelances();
+  const [userInfo, setUserInfo] = useState<User2>({
+    nom: "",
+    prenom: "",
+    username: "",
+    photo: "",
+  });
+
+  useEffect(() => {
+    const fetchUserInfo = async () => {
+      try {
+        // Si un conversationId est fourni, trouver la conversation spécifique
+        const conversation = conversationId
+          ? conversations.find((conv) => conv.id === conversationId)
+          : conversations[0]; // Sinon prendre la première conversation
+
+        if (!conversation) {
+          setUserInfo({
+            nom: "Utilisateur",
+            prenom: "Inconnu",
+            username: "user",
+            photo: "",
+          });
+          return;
+        }
+
+        const id1 = conversation.user1_id;
+        const id2 = conversation.user2_id;
+        const currentUserId = currentSession?.user?.id;
+
+        // Déterminer l'ID de l'autre utilisateur
+        const otherUserId = id1 === currentUserId ? id2 : id1;
+
+        if (!otherUserId) {
+          setUserInfo({
+            nom: "Utilisateur",
+            prenom: "Inconnu",
+            username: "user",
+            photo: "",
+          });
+          return;
+        }
+
+        // 1. Essayer le compte freelance d'abord
+        const freelanceInfo = getFreelanceByUserId(otherUserId);
+        if (freelanceInfo) {
+          setUserInfo({
+            nom: freelanceInfo.nom || "",
+            prenom: freelanceInfo.prenom || "",
+            username: freelanceInfo.username || "",
+            photo: getPhotoProfileUrl(freelanceInfo.photo_url || ""),
+          });
+          return;
+        }
+
+        // 2. Si pas de freelance, chercher l'utilisateur normal
+        const userData = await GetUserById(otherUserId);
+        if (userData) {
+          setUserInfo({
+            nom:
+              userData.nom_utilisateur ||
+              userData.email?.split("@")[0] ||
+              "Utilisateur",
+            prenom: "",
+            username:
+              userData.nom_utilisateur ||
+              userData.email?.split("@")[0] ||
+              "user",
+            photo: getPhotoProfileUrl(userData.profile_image || ""),
+          });
+          return;
+        }
+
+        // 3. Fallback si rien trouvé
+        setUserInfo({
+          nom: "",
+          prenom: "",
+          username: "",
+          photo: "",
+        });
+      } catch (error) {
+        console.error(
+          "Erreur lors de la récupération des infos utilisateur:",
+          error
+        );
+        setUserInfo({
+          nom: "",
+          prenom: "",
+          username: "",
+          photo: "",
+        });
+      }
+    };
+
+    if (conversations.length > 0) {
+      fetchUserInfo();
+    }
+  }, [
+    conversations,
+    conversationId,
+    currentSession,
+    GetUserById,
+    getFreelanceByUserId,
+    getPhotoProfileUrl,
+  ]);
+
+  return userInfo;
+};
 
 const Header = () => {
   const router = useRouter();
   const { currentSession, Logout } = useAuth();
   const { getUserFreelance, getPhotoProfileUrl } = useFreelances();
+  const { conversations, loading } = useMessaging();
 
   // États pour les menus déroulants
   const [showUserMenu, setShowUserMenu] = useState(false);
@@ -37,6 +160,45 @@ const Header = () => {
   // Récupération des données de l'utilisateur connecté
   const userId = currentSession?.userProfile?.id;
   const freelanceData = userId ? getUserFreelance(userId) : false;
+
+  // Calculer le nombre total de messages non lus
+  const unreadCount = conversations.reduce(
+    (total, conv) => total + (conv.unread_count || 0),
+    0
+  );
+
+  // Fonction pour formater la date des messages
+  const formatMessageTime = (dateString) => {
+    if (!dateString) return "";
+
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / (1000 * 60));
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+    if (diffMins < 60) {
+      return `Il y a ${diffMins} min`;
+    } else if (diffHours < 24) {
+      return `Il y a ${diffHours} h`;
+    } else if (diffDays === 1) {
+      return "Hier";
+    } else if (diffDays < 7) {
+      return `Il y a ${diffDays} j`;
+    } else {
+      return date.toLocaleDateString("fr-FR", {
+        day: "numeric",
+        month: "short",
+      });
+    }
+  };
+
+  // Récupérer les conversations récentes pour le dropdown
+  const recentConversations = conversations
+    .filter((conv) => !conv.is_archived && !conv.is_spam)
+    .sort((a, b) => new Date(b.last_message_at) - new Date(a.last_message_at))
+    .slice(0, 3);
 
   // Notifications factices (à remplacer par des données réelles)
   const notifications = [
@@ -79,36 +241,7 @@ const Header = () => {
     },
   ];
 
-  // Messages factices (à remplacer par des données réelles)
-  const messages = [
-    {
-      id: 1,
-      sender: "Marie Laurent",
-      message: "Bonjour, pouvez-vous commencer le projet demain ?",
-      time: "10 min",
-      avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Marie",
-      unread: true,
-    },
-    {
-      id: 2,
-      sender: "Pierre Martin",
-      message: "Merci beaucoup pour le travail, c'est parfait !",
-      time: "1 heure",
-      avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Pierre",
-      unread: true,
-    },
-    {
-      id: 3,
-      sender: "Sophie Dubois",
-      message: "J'ai besoin de révisions mineures sur le design...",
-      time: "3 heures",
-      avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Sophie",
-      unread: false,
-    },
-  ];
-
   const unreadNotifications = notifications.filter((n) => !n.read).length;
-  const unreadMessages = messages.filter((m) => m.unread).length;
 
   // Données utilisateur basées sur le profil connecté ou générées par défaut
   const userData = {
@@ -157,6 +290,71 @@ const Header = () => {
     setShowUserMenu(false);
     setShowNotifications(false);
     setShowMessages(false);
+  };
+
+  // Composant pour afficher un message dans le dropdown
+  const MessageItem = ({ conversation }) => {
+    const userInfo = useUserInfo(conversation.id);
+
+    return (
+      <div
+        className={`p-4 border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors ${
+          conversation.unread_count > 0 ? "bg-green-50/30" : ""
+        }`}
+        onClick={() => {
+          router.push(`/Message?conversation=${conversation.id}`);
+          setShowMessages(false);
+        }}
+      >
+        <div className="flex gap-3">
+          <div className="relative flex-shrink-0">
+            {userInfo.photo ? (
+              <img
+                src={userInfo.photo}
+                alt={`${userInfo.nom} ${userInfo.prenom}`}
+                className="w-12 h-12 rounded-full border-2 border-white shadow object-cover"
+              />
+            ) : (
+              <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full border-2 border-white shadow flex items-center justify-center text-white text-sm font-medium">
+                {(
+                  userInfo.nom.charAt(0) + userInfo.prenom.charAt(0)
+                ).toUpperCase() || "U"}
+              </div>
+            )}
+            {conversation.unread_count > 0 && (
+              <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
+            )}
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-start justify-between gap-2">
+              <h4
+                className={`text-sm ${
+                  conversation.unread_count > 0
+                    ? "font-bold text-gray-900"
+                    : "font-semibold text-gray-700"
+                }`}
+              >
+                {userInfo.nom} {userInfo.prenom}
+              </h4>
+              <span className="text-xs text-gray-500 flex-shrink-0">
+                {conversation.last_message_at
+                  ? formatMessageTime(conversation.last_message_at)
+                  : ""}
+              </span>
+            </div>
+            <p
+              className={`text-sm mt-1 line-clamp-2 ${
+                conversation.unread_count > 0
+                  ? "text-gray-900 font-medium"
+                  : "text-gray-600"
+              }`}
+            >
+              {conversation.last_message?.content || "Aucun message"}
+            </p>
+          </div>
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -714,9 +912,9 @@ const Header = () => {
                   className="p-2 hover:bg-gray-100 rounded-lg relative"
                 >
                   <MessageSquare className="w-5 h-5 lg:w-6 lg:h-6 text-gray-700" />
-                  {unreadMessages > 0 && (
+                  {unreadCount > 0 && (
                     <span className="absolute top-0.5 right-0.5 lg:top-1 lg:right-1 w-4 h-4 lg:w-5 lg:h-5 bg-green-500 text-white text-[10px] lg:text-xs rounded-full flex items-center justify-center font-semibold">
-                      {unreadMessages}
+                      {unreadCount > 9 ? "9+" : unreadCount}
                     </span>
                   )}
                 </button>
@@ -729,7 +927,7 @@ const Header = () => {
                         <h3 className="font-bold text-gray-900 text-lg">
                           Messages
                         </h3>
-                        {messages.length > 0 && (
+                        {recentConversations.length > 0 && (
                           <button className="text-sm text-green-600 hover:text-green-700 font-semibold">
                             Voir tout
                           </button>
@@ -742,52 +940,24 @@ const Header = () => {
                       className="flex-1 overflow-y-auto overscroll-contain"
                       style={{ WebkitOverflowScrolling: "touch" }}
                     >
-                      {messages.length > 0 ? (
-                        messages.map((msg) => (
-                          <div
-                            key={msg.id}
-                            className={`p-4 border-b border-gray-100 hover:bg-gray-50 cursor-pointer transition-colors ${
-                              msg.unread ? "bg-green-50/30" : ""
-                            }`}
-                          >
-                            <div className="flex gap-3">
-                              <div className="relative flex-shrink-0">
-                                <img
-                                  src={msg.avatar}
-                                  alt={msg.sender}
-                                  className="w-12 h-12 rounded-full border-2 border-white shadow"
-                                />
-                                {msg.unread && (
-                                  <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
-                                )}
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-start justify-between gap-2">
-                                  <h4
-                                    className={`text-sm ${
-                                      msg.unread
-                                        ? "font-bold text-gray-900"
-                                        : "font-semibold text-gray-700"
-                                    }`}
-                                  >
-                                    {msg.sender}
-                                  </h4>
-                                  <span className="text-xs text-gray-500 flex-shrink-0">
-                                    {msg.time}
-                                  </span>
-                                </div>
-                                <p
-                                  className={`text-sm mt-1 line-clamp-2 ${
-                                    msg.unread
-                                      ? "text-gray-900 font-medium"
-                                      : "text-gray-600"
-                                  }`}
-                                >
-                                  {msg.message}
-                                </p>
-                              </div>
-                            </div>
+                      {loading ? (
+                        <div className="p-12 text-center">
+                          <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <MessageSquare className="w-8 h-8 text-gray-400" />
                           </div>
+                          <h4 className="font-semibold text-gray-900 mb-2">
+                            Chargement...
+                          </h4>
+                          <p className="text-sm text-gray-600">
+                            Chargement des messages en cours
+                          </p>
+                        </div>
+                      ) : recentConversations.length > 0 ? (
+                        recentConversations.map((conversation) => (
+                          <MessageItem
+                            key={conversation.id}
+                            conversation={conversation}
+                          />
                         ))
                       ) : (
                         <div className="p-12 text-center">
@@ -805,9 +975,15 @@ const Header = () => {
                     </div>
 
                     {/* Footer */}
-                    {messages.length > 0 && (
+                    {recentConversations.length > 0 && (
                       <div className="p-3 border-t border-gray-200 bg-gray-50 flex-shrink-0">
-                        <button className="w-full text-center text-sm text-green-600 hover:text-green-700 font-semibold py-2">
+                        <button
+                          className="w-full text-center text-sm text-green-600 hover:text-green-700 font-semibold py-2"
+                          onClick={() => {
+                            router.push("/Message");
+                            setShowMessages(false);
+                          }}
+                        >
                           Ouvrir la messagerie
                         </button>
                       </div>

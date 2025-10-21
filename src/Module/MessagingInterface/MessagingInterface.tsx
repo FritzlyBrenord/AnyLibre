@@ -197,7 +197,7 @@ const MessagingInterface = () => {
   ]);
 
   const useUserInfo = (): User2 => {
-    const { currentConversation } = useMessaging();
+    const { conversations } = useMessaging();
     const { GetUserById, currentSession } = useAuth();
     const [userInfo, setUserInfo] = useState<User2>({
       nom: "",
@@ -209,8 +209,9 @@ const MessagingInterface = () => {
     useEffect(() => {
       const fetchUserInfo = async () => {
         try {
-          const id1 = currentConversation?.user1_id;
-          const id2 = currentConversation?.user2_id;
+          const id1 = conversations.find((item) => item.user1_id)?.user1_id;
+          const id2 = conversations.find((item) => item.user2_id)?.user2_id;
+
           const currentUserId = currentSession?.user?.id;
 
           // Déterminer l'ID de l'autre utilisateur
@@ -278,7 +279,7 @@ const MessagingInterface = () => {
       };
 
       fetchUserInfo();
-    }, [currentConversation, currentSession, GetUserById]);
+    }, [conversations, currentSession, GetUserById]);
 
     return userInfo;
   };

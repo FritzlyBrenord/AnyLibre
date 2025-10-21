@@ -6,8 +6,21 @@ import {
   FreelanceFormData,
   useFreelances,
 } from "@/Context/Freelance/FreelanceContext";
-import { useServices } from "@/Context/Freelance/ContextService";
+import { useServices, Service } from "@/Context/Freelance/ContextService";
 import PoserUneQuestion from "@/Module/Client/PoserUneQuestion/PoserUneQuestion";
+
+import {
+  Heart,
+  Star,
+  MapPin,
+  Globe,
+  Clock,
+  Play,
+  Pause,
+  ChevronLeft,
+  ChevronRight,
+} from "lucide-react";
+import { ServiceCard } from "@/Module/Client/CadreService/CadreService";
 
 // Types pour les données
 interface ProfileData {
@@ -49,26 +62,46 @@ interface Certification {
   id?: number;
 }
 
-interface Service {
+interface ServiceImage {
+  id: string;
+  name: string;
+  url: string;
+  path: string;
+  type: string;
+}
+
+interface Seller {
+  name: string;
+  level: string;
+  isTopRated: boolean;
+  isOnline: boolean;
+  photo_url?: string;
+}
+
+// Interface renommée pour éviter le conflit avec Service du contexte
+interface ServiceDisplay {
   id: string;
   title: string;
   description: string;
-  packages?: Package[];
-  statut: string;
-}
-
-interface Package {
-  price: string;
-  deliveryDays: string;
+  category: string;
+  price: number;
+  rating: number;
+  reviews: number;
+  images: ServiceImage[];
+  video_url?: string;
+  hasVideo?: boolean;
+  freelance_id: string;
+  seller: Seller;
+  badges: string[];
 }
 
 const FreelancerProfile = () => {
   const searchParams = useSearchParams();
   const freelanceId = searchParams.get("id");
   const [isMessagingOpen, setIsMessagingOpen] = useState(false);
-  const [showEnglish, setShowEnglish] = useState(false);
   const [activeTab, setActiveTab] = useState("services");
   const [isLoading, setIsLoading] = useState(true);
+  const [favorites, setFavorites] = useState<Set<string>>(new Set());
 
   // Contextes pour récupérer les données depuis le serveur
   const { getFreelanceById } = useFreelances();
@@ -76,9 +109,12 @@ const FreelancerProfile = () => {
 
   // États pour les données récupérées
   const [freelance, setFreelance] = useState<FreelanceFormData | null>(null);
-  const [freelanceServices, setFreelanceServices] = useState<Service[]>([]);
+  const [freelanceServices, setFreelanceServices] = useState<ServiceDisplay[]>(
+    []
+  );
   const UserFreelance = freelance?.id_user;
-  // Données par défaut pour le profil (à remplacer par les données du freelance)
+
+  // Données par défaut pour le profil
   const profileData: ProfileData = {
     name: freelance ? `${freelance.prenom} ${freelance.nom}` : "Freelancer",
     username: freelance?.username || "username",
@@ -92,40 +128,7 @@ const FreelancerProfile = () => {
     },
   };
 
-  // Données par défaut pour les témoignages et portfolio (à remplacer par des données serveur)
-  const testimonials = [
-    {
-      id: 1,
-      name: "Sophie Martin",
-      company: "Boutique Élégance",
-      image: "https://randomuser.me/api/portraits/women/12.jpg",
-      rating: 5,
-      date: "15 Juin 2024",
-      comment:
-        "Akibur a transformé mon site Wix en une boutique e-commerce professionnelle qui a doublé mes ventes en seulement 2 mois. Son expertise technique et sa créativité ont dépassé mes attentes.",
-    },
-    {
-      id: 2,
-      name: "Jean Dupont",
-      company: "Conseil JD",
-      image: "https://randomuser.me/api/portraits/men/32.jpg",
-      rating: 5,
-      date: "28 Mai 2024",
-      comment:
-        "Excellente collaboration avec Akibur pour l'optimisation SEO de notre site. Résultats visibles dès le premier mois avec une augmentation de 45% du trafic organique.",
-    },
-    {
-      id: 3,
-      name: "Marie Leclerc",
-      company: "Studio Design ML",
-      image: "https://randomuser.me/api/portraits/women/22.jpg",
-      rating: 4,
-      date: "10 Avril 2024",
-      comment:
-        "Service rapide et professionnel. Le design proposé correspondait parfaitement à notre identité de marque. Je recommande vivement pour tout projet Wix.",
-    },
-  ];
-
+  // Données pour le portfolio
   const portfolio = [
     {
       id: 1,
@@ -150,16 +153,9 @@ const FreelancerProfile = () => {
       image: "https://source.unsplash.com/random/600x400?food,blog",
       description: "Blog gastronomique avec monétisation et section membres",
     },
-    {
-      id: 4,
-      title: "Application de Réservation",
-      category: "Application Web",
-      image: "https://source.unsplash.com/random/600x400?app,booking",
-      description: "Système de réservation en ligne pour un salon de coiffure",
-    },
   ];
 
-  // Chargement des données du freelance et de ses services
+  // Chargement des données
   useEffect(() => {
     const loadData = async () => {
       setIsLoading(true);
@@ -173,9 +169,33 @@ const FreelancerProfile = () => {
 
           // Récupérer les services du freelance
           const services = getServicesByFreelanceId(freelanceId);
-          setFreelanceServices(
-            services.filter((service: Service) => service.statut === "actif")
-          );
+
+          // Transformer les services du contexte en ServiceDisplay
+          const transformedServices: ServiceDisplay[] = services
+            .filter((service: Service) => service.statut === "actif")
+            .map((service: any) => ({
+              id: service.id || "",
+              title: service.titre || service.title || "",
+              description: service.description || "",
+              category: service.categorie || service.category || "",
+              price: service.prix || service.price || 0,
+              rating: service.note || service.rating || 4.5,
+              reviews: service.nombre_avis || service.reviews || 0,
+              images: service.images || [],
+              video_url: service.video_url,
+              hasVideo: !!service.video_url,
+              freelance_id: service.freelance_id || freelanceId,
+              seller: {
+                name: `${freelanceData.prenom} ${freelanceData.nom}`,
+                level: "Expert",
+                isTopRated: true,
+                isOnline: true,
+                photo_url: freelanceData.photo_url,
+              },
+              badges: service.badges || [],
+            }));
+
+          setFreelanceServices(transformedServices);
         }
       }
 
@@ -185,22 +205,33 @@ const FreelancerProfile = () => {
     loadData();
   }, [freelanceId, getFreelanceById, getServicesByFreelanceId]);
 
-  // Statistiques calculées à partir des données réelles
+  // Gestion des favoris
+  const handleFavorite = (serviceId: string) => {
+    setFavorites((prev) => {
+      const newFavorites = new Set(prev);
+      if (newFavorites.has(serviceId)) {
+        newFavorites.delete(serviceId);
+      } else {
+        newFavorites.add(serviceId);
+      }
+      return newFavorites;
+    });
+  };
+
+  // Statistiques
   const statistics = [
     {
-      label: "Projets complétés",
+      label: "Services actifs",
       value: freelanceServices ? freelanceServices.length.toString() : "0",
     },
     { label: "Taux de satisfaction", value: "98%" },
     { label: "Clients fidèles", value: "57" },
     {
-      label: "Années d'expérience",
+      label: "Expérience",
       value:
         freelance?.formations && freelance.formations.length > 0
           ? `${
-              Math.max(
-                ...freelance.formations.map((f: Formation) => parseInt(f.annee))
-              ) -
+              new Date().getFullYear() -
               Math.min(
                 ...freelance.formations.map((f: Formation) => parseInt(f.annee))
               )
@@ -209,39 +240,11 @@ const FreelancerProfile = () => {
     },
   ];
 
-  // Fonction pour générer les étoiles de notation
-  const renderStars = (rating: number) => {
-    const stars = [];
-    const fullStars = Math.floor(rating);
-    const hasHalfStar = rating % 1 >= 0.5;
-
-    for (let i = 0; i < fullStars; i++) {
-      stars.push(
-        <i key={`full-${i}`} className="fas fa-star text-yellow-400"></i>
-      );
-    }
-
-    if (hasHalfStar) {
-      stars.push(
-        <i key="half" className="fas fa-star-half-alt text-yellow-400"></i>
-      );
-    }
-
-    const emptyStars = 5 - stars.length;
-    for (let i = 0; i < emptyStars; i++) {
-      stars.push(
-        <i key={`empty-${i}`} className="far fa-star text-yellow-400"></i>
-      );
-    }
-
-    return stars;
-  };
-
   if (isLoading) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-400 mx-auto"></div>
           <p className="mt-4 text-gray-600">Chargement du profil...</p>
         </div>
       </div>
@@ -266,104 +269,108 @@ const FreelancerProfile = () => {
   return (
     <div className="min-h-screen bg-white">
       {/* En-tête du profil */}
-      <header className="pt-20 pb-12 border-b border-gray-200">
+      <header className="pt-20 pb-12 bg-gradient-to-br from-blue-100 via-blue-200 to-blue-300">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
-            {/* Avatar */}
+          <div className="flex flex-col lg:flex-row items-start lg:items-center gap-8">
+            {/* Avatar avec effet glassmorphism */}
             <div className="relative">
-              <div className="w-28 h-28 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-full flex items-center justify-center text-white text-3xl font-bold shadow-lg">
+              <div className="w-32 h-32 bg-white backdrop-blur-lg rounded-2xl flex items-center justify-center text-blue-400 text-4xl font-bold border-2 border-blue-300 shadow-xl">
                 {freelance.prenom.charAt(0)}
                 {freelance.nom.charAt(0)}
               </div>
-              <span className="absolute bottom-0 right-0 h-5 w-5 bg-green-500 border-2 border-white rounded-full"></span>
+              <div className="absolute -bottom-2 -right-2 w-6 h-6 bg-yellow-400 border-4 border-white rounded-full shadow-lg"></div>
             </div>
 
             {/* Informations principales */}
-            <div className="flex-1">
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between">
-                <div>
-                  <h1 className="text-3xl font-bold text-gray-900">
+            <div className="flex-1 space-y-4">
+              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
+                <div className="space-y-2">
+                  <h1 className="text-4xl font-bold text-gray-800">
                     {profileData.name}
                   </h1>
-                  <p className="text-gray-600 flex items-center gap-2">
-                    {profileData.username}{" "}
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <p className="text-gray-600">@{profileData.username}</p>
+                    <span className="px-3 py-1 bg-yellow-200 rounded-full text-sm font-medium text-gray-700 border border-yellow-300">
                       {profileData.level}
                     </span>
-                  </p>
-                  <p className="text-gray-700 mt-2">
+                  </div>
+                  <p className="text-gray-600 max-w-2xl leading-relaxed">
                     {profileData.description}
                   </p>
                 </div>
-                <div className="mt-4 md:mt-0 flex flex-col items-start md:items-end">
-                  <div className="flex items-center mb-2">
-                    <span className="mr-2 font-medium text-gray-900">
-                      Note :
+
+                <div className="flex flex-col items-start lg:items-end gap-3 mt-4 lg:mt-0">
+                  <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-2xl border-2 border-yellow-300 shadow-md">
+                    <Star className="w-5 h-5 fill-yellow-400 text-yellow-400" />
+                    <span className="font-bold text-gray-800">
+                      {profileData.rating}
                     </span>
-                    <div className="flex items-center">
-                      {renderStars(
-                        parseFloat(profileData.rating.replace(",", "."))
-                      )}
-                      <span className="ml-2 text-gray-700">
-                        {profileData.rating}/5
-                      </span>
-                    </div>
+                    <span className="text-gray-600">/5</span>
                   </div>
+
                   <button
                     onClick={() => setIsMessagingOpen(true)}
-                    className="mb-3 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                    className="px-6 py-3 bg-blue-300 text-gray-800 rounded-xl font-semibold hover:bg-blue-400 transition-all duration-300 shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
                   >
                     Contacter
                   </button>
-                  <div className="flex items-center gap-4 text-gray-600 text-sm">
-                    <div className="flex items-center">
-                      <i className="fas fa-map-marker-alt mr-2"></i>
+
+                  <div className="flex items-center gap-4 text-gray-700 text-sm flex-wrap">
+                    <div className="flex items-center gap-1">
+                      <MapPin className="w-4 h-4" />
                       <span>{profileData.location}</span>
                     </div>
-                    <div className="flex items-center">
-                      <i className="fas fa-globe mr-2"></i>
+                    <div className="flex items-center gap-1">
+                      <Globe className="w-4 h-4" />
                       <span>{profileData.language}</span>
                     </div>
-                    <div className="flex items-center">
-                      <i className="fas fa-clock mr-2"></i>
+                    <div className="flex items-center gap-1">
+                      <Clock className="w-4 h-4" />
                       <span>{profileData.contact.localTime}</span>
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
-          </div>
 
-          {/* Statistiques */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8">
-            {statistics.map((stat, index) => (
-              <div
-                key={index}
-                className="text-center p-4 border border-gray-200 rounded-lg hover:border-blue-500 transition-colors"
-              >
-                <p className="text-3xl font-bold text-blue-600">{stat.value}</p>
-                <p className="text-sm text-gray-600">{stat.label}</p>
+              {/* Statistiques avec design moderne */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 pt-4">
+                {statistics.map((stat, index) => (
+                  <div
+                    key={index}
+                    className="bg-white rounded-2xl p-4 border-2 border-blue-200 hover:border-blue-300 transition-all duration-300 shadow-sm"
+                  >
+                    <p className="text-2xl font-bold text-gray-800">
+                      {stat.value}
+                    </p>
+                    <p className="text-gray-600 text-sm">{stat.label}</p>
+                  </div>
+                ))}
               </div>
-            ))}
+            </div>
           </div>
         </div>
       </header>
 
-      {/* Navigation par onglets */}
-      <div className="border-b border-gray-200 bg-white">
+      {/* Navigation par onglets moderne */}
+      <div className="sticky top-0 z-40 bg-white border-b-2 border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <nav className="flex space-x-8">
-            {["services", "portfolio", "témoignages", "à propos"].map((tab) => (
+          <nav className="flex space-x-1">
+            {[
+              { id: "services", label: "Services", icon: "🛠️" },
+              { id: "portfolio", label: "Portfolio", icon: "🎨" },
+              { id: "about", label: "À propos", icon: "👤" },
+            ].map((tab) => (
               <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
                 className={`${
-                  activeTab === tab
-                    ? "border-blue-600 text-blue-600"
-                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm capitalize`}
+                  activeTab === tab.id
+                    ? "bg-blue-200 text-gray-800 shadow-md border-2 border-blue-300"
+                    : "text-gray-600 hover:text-gray-800 hover:bg-gray-100"
+                } flex items-center gap-2 px-6 py-4 rounded-2xl font-medium transition-all duration-300 transform hover:scale-105`}
               >
-                {tab}
+                <span>{tab.icon}</span>
+                {tab.label}
               </button>
             ))}
           </nav>
@@ -372,95 +379,73 @@ const FreelancerProfile = () => {
 
       {/* Contenu principal */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Services */}
+        {/* Services avec le composant ServiceCard */}
         {activeTab === "services" && (
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">
-              Mes Services
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {freelanceServices && freelanceServices.length > 0 ? (
-                freelanceServices.map((service: Service) => (
-                  <div
-                    key={service.id}
-                    className="border border-gray-200 rounded-lg overflow-hidden hover:shadow-lg transition-shadow"
-                  >
-                    <div className="p-6">
-                      <h3 className="text-lg font-bold text-gray-900 mb-2">
-                        {service.title}
-                      </h3>
-                      <p className="text-gray-600 mb-4 text-sm">
-                        {service.description.substring(0, 120)}...
-                      </p>
-                      <div className="flex justify-between items-center mb-4">
-                        <div className="flex items-center">
-                          {renderStars(4.8)}
-                          <span className="ml-2 text-sm text-gray-600">
-                            (30)
-                          </span>
-                        </div>
-                        <span className="text-blue-600 font-bold">
-                          {service.packages && service.packages.length > 0
-                            ? `À partir de ${service.packages[0].price}€`
-                            : "Prix sur demande"}
-                        </span>
-                      </div>
-                      <div className="flex justify-between items-center text-sm text-gray-600">
-                        <span className="flex items-center">
-                          <i className="far fa-clock mr-2"></i>
-                          {service.packages && service.packages.length > 0
-                            ? `${service.packages[0].deliveryDays} jours`
-                            : "Délai à définir"}
-                        </span>
-                        <button className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors">
-                          Commander
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className="col-span-3 text-center py-12">
-                  <p className="text-gray-500">
-                    Aucun service disponible pour le moment.
-                  </p>
-                </div>
-              )}
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-3xl font-bold text-gray-800">Mes Services</h2>
+              <span className="px-4 py-2 bg-blue-200 text-gray-800 rounded-full font-medium border-2 border-blue-300">
+                {freelanceServices.length} services disponibles
+              </span>
             </div>
+
+            {freelanceServices && freelanceServices.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                {freelanceServices.map((service: ServiceDisplay) => (
+                  <ServiceCard
+                    key={service.id}
+                    service={service}
+                    onFavorite={handleFavorite}
+                    isFavorited={favorites.has(service.id)}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <div className="w-24 h-24 mx-auto mb-4 bg-gray-100 rounded-2xl flex items-center justify-center border-2 border-gray-200">
+                  <span className="text-3xl">🛠️</span>
+                </div>
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                  Aucun service disponible
+                </h3>
+                <p className="text-gray-600 max-w-md mx-auto">
+                  Ce freelance n'a pas encore publié de services. N'hésitez pas
+                  à le contacter pour discuter de votre projet.
+                </p>
+              </div>
+            )}
           </div>
         )}
 
         {/* Portfolio */}
         {activeTab === "portfolio" && (
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">
-              Portfolio de projets
-            </h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="space-y-6">
+            <h2 className="text-3xl font-bold text-gray-800">Portfolio</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {portfolio.map((project) => (
                 <div
                   key={project.id}
-                  className="border border-gray-200 rounded-lg overflow-hidden hover:shadow-lg transition-shadow"
+                  className="group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-500 border-2 border-gray-200 hover:border-blue-300"
                 >
-                  <div className="aspect-video w-full overflow-hidden">
+                  <div className="aspect-video w-full overflow-hidden bg-gradient-to-br from-gray-100 to-blue-100">
                     <img
                       src={project.image}
                       alt={project.title}
-                      className="w-full h-full object-cover transition-transform hover:scale-105"
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                     />
                   </div>
-                  <div className="p-4">
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 mb-2">
+                  <div className="p-6">
+                    <span className="inline-flex items-center px-3 py-1 bg-yellow-200 text-gray-800 text-sm font-medium rounded-full mb-3 border border-yellow-300">
                       {project.category}
                     </span>
-                    <h3 className="text-lg font-bold text-gray-900">
+                    <h3 className="text-xl font-bold text-gray-900 mb-2">
                       {project.title}
                     </h3>
-                    <p className="text-gray-600 text-sm mt-1">
+                    <p className="text-gray-600 leading-relaxed">
                       {project.description}
                     </p>
-                    <button className="mt-3 text-blue-600 text-sm font-medium hover:text-blue-800">
-                      Voir le projet →
+                    <button className="mt-4 w-full py-3 bg-blue-300 text-gray-800 rounded-xl font-semibold hover:bg-blue-400 transition-all duration-300 transform hover:-translate-y-0.5 shadow-md hover:shadow-lg">
+                      Voir le projet
                     </button>
                   </div>
                 </div>
@@ -469,75 +454,78 @@ const FreelancerProfile = () => {
           </div>
         )}
 
-        {/* Témoignages */}
-        {activeTab === "témoignages" && (
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">
-              Témoignages clients
-            </h2>
-            <div className="space-y-6">
-              {testimonials.map((testimonial) => (
-                <div
-                  key={testimonial.id}
-                  className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow"
-                >
-                  <div className="flex items-start">
-                    <img
-                      src={testimonial.image}
-                      alt={testimonial.name}
-                      className="w-12 h-12 rounded-full mr-4"
-                    />
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between mb-2">
-                        <div>
-                          <h3 className="font-bold text-gray-900">
-                            {testimonial.name}
-                          </h3>
-                          <p className="text-sm text-gray-600">
-                            {testimonial.company}
-                          </p>
-                        </div>
-                        <span className="text-sm text-gray-500">
-                          {testimonial.date}
-                        </span>
-                      </div>
-                      <div className="flex mb-3">
-                        {renderStars(testimonial.rating)}
-                      </div>
-                      <p className="text-gray-700">{testimonial.comment}</p>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
         {/* À propos */}
-        {activeTab === "à propos" && (
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">À propos</h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              <div className="md:col-span-2">
-                <div className="bg-white rounded-lg border border-gray-200 p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">
+        {activeTab === "about" && (
+          <div className="space-y-8">
+            <h2 className="text-3xl font-bold text-gray-800">
+              À propos de moi
+            </h2>
+
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              {/* Colonne principale */}
+              <div className="lg:col-span-2 space-y-8">
+                {/* Description */}
+                <div className="bg-white rounded-2xl p-8 shadow-sm border-2 border-gray-200">
+                  <h3 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
+                    <span className="w-2 h-8 bg-gradient-to-b from-blue-300 to-blue-400 rounded-full"></span>
                     Mon parcours
                   </h3>
-                  <p className="text-gray-700 mb-4">{freelance.description}</p>
+                  <p className="text-gray-700 leading-relaxed text-lg">
+                    {freelance.description}
+                  </p>
+                </div>
 
-                  {freelance.formations && freelance.formations.length > 0 && (
-                    <div className="mt-6">
-                      <h4 className="text-md font-semibold text-gray-800 mb-2">
-                        Formation
-                      </h4>
-                      <div className="space-y-2">
-                        {freelance.formations.map(
-                          (formation: Formation, index: number) => (
-                            <div key={index} className="flex items-center">
-                              <span className="w-2 h-2 bg-blue-600 rounded-full mr-2"></span>
-                              <p className="text-gray-700">
-                                {formation.universite}, {formation.pays} -{" "}
+                {/* Formations */}
+                {freelance.formations && freelance.formations.length > 0 && (
+                  <div className="bg-white rounded-2xl p-8 shadow-sm border-2 border-gray-200">
+                    <h3 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
+                      <span className="w-2 h-8 bg-gradient-to-b from-blue-300 to-blue-400 rounded-full"></span>
+                      Formation
+                    </h3>
+                    <div className="space-y-6">
+                      {freelance.formations.map(
+                        (formation: Formation, index: number) => (
+                          <div key={index} className="flex gap-4 group">
+                            <div className="flex flex-col items-center">
+                              <div className="w-3 h-3 bg-blue-400 rounded-full group-hover:scale-150 transition-transform duration-300"></div>
+                              <div className="w-0.5 h-full bg-gradient-to-b from-blue-200 to-gray-200 mt-1"></div>
+                            </div>
+                            <div className="flex-1 pb-6">
+                              <h4 className="font-bold text-gray-900 text-lg">
+                                {formation.universite}
+                              </h4>
+                              <p className="text-gray-600">{formation.pays}</p>
+                              <p className="text-blue-400 font-semibold">
                                 {formation.annee}
+                              </p>
+                            </div>
+                          </div>
+                        )
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Certifications */}
+                {freelance.certifications &&
+                  freelance.certifications.length > 0 && (
+                    <div className="bg-white rounded-2xl p-8 shadow-sm border-2 border-gray-200">
+                      <h3 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
+                        <span className="w-2 h-8 bg-gradient-to-b from-blue-300 to-blue-400 rounded-full"></span>
+                        Certifications
+                      </h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {freelance.certifications.map(
+                          (certification: Certification, index: number) => (
+                            <div
+                              key={index}
+                              className="bg-gradient-to-br from-blue-100 to-blue-200 rounded-xl p-4 border-2 border-blue-300"
+                            >
+                              <h4 className="font-bold text-gray-900">
+                                {certification.nom}
+                              </h4>
+                              <p className="text-blue-400 font-semibold">
+                                {certification.annee}
                               </p>
                             </div>
                           )
@@ -545,50 +533,31 @@ const FreelancerProfile = () => {
                       </div>
                     </div>
                   )}
-
-                  {freelance.certifications &&
-                    freelance.certifications.length > 0 && (
-                      <div className="mt-6">
-                        <h4 className="text-md font-semibold text-gray-800 mb-2">
-                          Certifications
-                        </h4>
-                        <div className="space-y-2">
-                          {freelance.certifications.map(
-                            (certification: Certification, index: number) => (
-                              <div key={index} className="flex items-center">
-                                <span className="w-2 h-2 bg-blue-600 rounded-full mr-2"></span>
-                                <p className="text-gray-700">
-                                  {certification.nom} ({certification.annee})
-                                </p>
-                              </div>
-                            )
-                          )}
-                        </div>
-                      </div>
-                    )}
-                </div>
               </div>
-              <div>
-                <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">
+
+              {/* Colonne latérale */}
+              <div className="space-y-6">
+                {/* Compétences */}
+                <div className="bg-white rounded-2xl p-6 shadow-sm border-2 border-gray-200">
+                  <h3 className="text-xl font-bold text-gray-900 mb-4">
                     Compétences
                   </h3>
-                  <div className="space-y-3">
+                  <div className="space-y-4">
                     {freelance.competences &&
                       freelance.competences.map(
                         (skill: string, index: number) => (
-                          <div key={index}>
-                            <div className="flex justify-between mb-1">
-                              <span className="text-sm font-medium text-gray-700">
+                          <div key={index} className="group">
+                            <div className="flex justify-between mb-2">
+                              <span className="font-medium text-gray-700">
                                 {skill}
                               </span>
-                              <span className="text-sm font-medium text-blue-600">
+                              <span className="text-blue-400 font-bold">
                                 {90 + (index % 10)}%
                               </span>
                             </div>
-                            <div className="w-full bg-gray-200 rounded-full h-2">
+                            <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
                               <div
-                                className="bg-blue-600 h-2 rounded-full"
+                                className="bg-gradient-to-r from-blue-300 to-blue-400 h-2 rounded-full transition-all duration-1000 ease-out group-hover:from-blue-400 group-hover:to-yellow-400"
                                 style={{ width: `${90 + (index % 10)}%` }}
                               ></div>
                             </div>
@@ -597,46 +566,72 @@ const FreelancerProfile = () => {
                       )}
                   </div>
                 </div>
-                <div className="bg-white rounded-lg border border-gray-200 p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                    Contactez-moi
-                  </h3>
-                  <div className="space-y-3 text-gray-700">
-                    <p className="flex items-center">
-                      <i className="fas fa-clock mr-3 text-blue-600"></i>
-                      Temps de réponse moyen: 1 heure
-                    </p>
-                  </div>
-                  <div className="mt-4 flex space-x-3">
-                    {freelance.sites_web &&
-                      freelance.sites_web.length > 0 &&
-                      freelance.sites_web.map((site: string, index: number) => {
-                        // Déterminer l'icône en fonction de l'URL
-                        let icon = "fas fa-globe";
-                        if (site.includes("linkedin"))
-                          icon = "fab fa-linkedin-in";
-                        if (site.includes("github")) icon = "fab fa-github";
-                        if (site.includes("twitter") || site.includes("x.com"))
-                          icon = "fab fa-twitter";
-                        if (site.includes("facebook"))
-                          icon = "fab fa-facebook-f";
-                        if (site.includes("instagram"))
-                          icon = "fab fa-instagram";
 
-                        return (
-                          <a
-                            key={index}
-                            href={site}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white"
-                          >
-                            <i className={icon}></i>
-                          </a>
-                        );
-                      })}
+                {/* Contact & Réseaux sociaux */}
+                <div className="bg-white rounded-2xl p-6 shadow-sm border-2 border-gray-200">
+                  <h3 className="text-xl font-bold text-gray-900 mb-4">
+                    Contact
+                  </h3>
+
+                  <div className="space-y-3 text-gray-700 mb-6">
+                    <div className="flex items-center gap-3 p-3 bg-blue-100 rounded-xl border border-blue-200">
+                      <Clock className="w-5 h-5 text-blue-400" />
+                      <div>
+                        <p className="font-medium">Temps de réponse</p>
+                        <p className="text-sm text-blue-400">Moins d'1 heure</p>
+                      </div>
+                    </div>
                   </div>
-                  <button className="mt-6 w-full px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors">
+
+                  {/* Réseaux sociaux */}
+                  {freelance.sites_web && freelance.sites_web.length > 0 && (
+                    <>
+                      <h4 className="font-semibold text-gray-900 mb-3">
+                        Réseaux sociaux
+                      </h4>
+                      <div className="flex gap-3">
+                        {freelance.sites_web.map(
+                          (site: string, index: number) => {
+                            const getPlatformInfo = (url: string) => {
+                              if (url.includes("linkedin"))
+                                return { icon: "💼", color: "bg-blue-300" };
+                              if (url.includes("github"))
+                                return { icon: "💻", color: "bg-gray-400" };
+                              if (
+                                url.includes("twitter") ||
+                                url.includes("x.com")
+                              )
+                                return { icon: "🐦", color: "bg-blue-200" };
+                              if (url.includes("facebook"))
+                                return { icon: "👥", color: "bg-blue-300" };
+                              if (url.includes("instagram"))
+                                return { icon: "📸", color: "bg-yellow-300" };
+                              return { icon: "🌐", color: "bg-gray-300" };
+                            };
+
+                            const platform = getPlatformInfo(site);
+
+                            return (
+                              <a
+                                key={index}
+                                href={site}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className={`w-12 h-12 ${platform.color} text-gray-800 rounded-xl flex items-center justify-center text-lg hover:scale-110 transition-transform duration-300 shadow-md hover:shadow-lg border-2 border-gray-300`}
+                              >
+                                {platform.icon}
+                              </a>
+                            );
+                          }
+                        )}
+                      </div>
+                    </>
+                  )}
+
+                  <button
+                    onClick={() => setIsMessagingOpen(true)}
+                    className="mt-6 w-full py-3 bg-blue-300 text-gray-800 rounded-xl font-semibold hover:bg-blue-400 transition-all duration-300 transform hover:-translate-y-0.5 shadow-md hover:shadow-lg"
+                  >
                     Contacter
                   </button>
                 </div>
@@ -647,24 +642,33 @@ const FreelancerProfile = () => {
       </main>
 
       {/* Pied de page */}
-      <footer className="bg-gray-50 border-t border-gray-200 mt-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="flex flex-col items-center justify-center">
-            <h2 className="text-xl font-bold text-gray-900">
+      <footer className="bg-gradient-to-br from-blue-200 to-blue-300 mt-16">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+          <div className="flex flex-col items-center justify-center text-center space-y-4">
+            <div className="w-20 h-20 bg-white backdrop-blur-lg rounded-2xl flex items-center justify-center text-2xl font-bold border-2 border-blue-400 text-blue-400">
+              {freelance.prenom.charAt(0)}
+              {freelance.nom.charAt(0)}
+            </div>
+
+            <h2 className="text-2xl font-bold text-gray-800">
               {freelance.prenom} {freelance.nom}
             </h2>
-            <p className="text-gray-600 mt-1">
+
+            <p className="text-gray-700 text-lg">
               {freelance.occupations && freelance.occupations.length > 0
                 ? freelance.occupations.join(" • ")
-                : "Freelancer"}
+                : "Freelancer professionnel"}
             </p>
-            <p className="mt-6 text-center text-base text-gray-500">
+
+            <p className="text-gray-600 mt-8">
               &copy; 2024 {freelance.prenom} {freelance.nom}. Tous droits
               réservés.
             </p>
           </div>
         </div>
       </footer>
+
+      {/* Modal de contact */}
       <PoserUneQuestion
         open={isMessagingOpen}
         onClose={() => setIsMessagingOpen(false)}
