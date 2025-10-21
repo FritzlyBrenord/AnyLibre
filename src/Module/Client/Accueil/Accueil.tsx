@@ -13,38 +13,116 @@ import {
   MapPin,
   ChevronLeft,
   ChevronRight,
+  User,
+  X,
 } from "lucide-react";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
+import { useServices } from "@/Context/Freelance/ContextService";
+import { useFreelances } from "@/Context/Freelance/FreelanceContext";
+import getDefaultServiceImage from "@/Component/Data/ImageDefault/ImageParDefaut";
+
+import { useRouter } from "next/navigation";
+import { searchTags } from "@/Component/Data/Service/Service";
 
 const Accueil = () => {
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [currentTestimonial, setCurrentTestimonial] = useState(0);
   const [currentSlide, setCurrentSlide] = useState(0);
-  const [isLanguageOpen, setIsLanguageOpen] = useState(false);
-  const [isCurrencyOpen, setIsCurrencyOpen] = useState(false);
-  const [selectedLanguage, setSelectedLanguage] = useState("fr");
-  const [selectedCurrency, setSelectedCurrency] = useState("EUR");
-  const [showLiteCategories, setShowLiteCategories] = useState(false);
-  const [currentCategoryIndex, setCurrentCategoryIndex] = useState(0);
-  const [showHeaderSearch, setShowHeaderSearch] = useState(false);
-  const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const [stats, setStats] = useState({
-    freelancers: 0,
-    projects: 0,
-    satisfaction: 0,
-    countries: 0,
-  });
+  const [selectedCurrency, setSelectedCurrency] = useState("USD");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showTagSuggestions, setShowTagSuggestions] = useState(false);
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const router = useRouter();
+
+  // Récupérer les données des contexts
+  const { services, isLoading: servicesLoading } = useServices();
+  const {
+    freelances,
+    getPhotoProfileUrl,
+    isLoading: freelancesLoading,
+  } = useFreelances();
+
+  // Combiner tous les tags
+  const allTags = useMemo(() => {
+    return Object.values(searchTags).flat();
+  }, []);
+
+  // Tags populaires basés sur l'usage réel
+  const popularTags = useMemo(() => {
+    const tagCounts: { [key: string]: number } = {};
+
+    services.forEach((service) => {
+      service.tags?.forEach((tag) => {
+        if (allTags.includes(tag)) {
+          tagCounts[tag] = (tagCounts[tag] || 0) + 1;
+        }
+      });
+    });
+
+    return Object.entries(tagCounts)
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 12)
+      .map(([tag]) => tag);
+  }, [services, allTags]);
+
+  // Suggestions de tags basées sur la recherche
+  const tagSuggestions = useMemo(() => {
+    if (searchQuery.length < 2) return popularTags.slice(0, 8);
+
+    const query = searchQuery.toLowerCase();
+    return allTags
+      .filter((tag) => tag.toLowerCase().includes(query))
+      .slice(0, 10);
+  }, [searchQuery, allTags, popularTags]);
+
+  // Gérer la recherche
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+
+    const params = new URLSearchParams();
+
+    if (searchQuery.trim()) {
+      params.append("q", searchQuery.trim());
+    }
+
+    if (selectedTags.length > 0) {
+      selectedTags.forEach((tag) => params.append("tags", tag));
+    }
+
+    const queryString = params.toString();
+    router.push(`/ResultatRecherche${queryString ? `?${queryString}` : ""}`);
+  };
+
+  // Ajouter un tag
+  const handleAddTag = (tag: string) => {
+    if (!selectedTags.includes(tag)) {
+      setSelectedTags((prev) => [...prev, tag]);
+      setSearchQuery("");
+      setShowTagSuggestions(false);
+    }
+  };
+
+  // Supprimer un tag
+  const handleRemoveTag = (tagToRemove: string) => {
+    setSelectedTags((prev) => prev.filter((tag) => tag !== tagToRemove));
+  };
+
+  // Effacer la recherche
+  const clearSearch = () => {
+    setSearchQuery("");
+    setSelectedTags([]);
+    setShowTagSuggestions(false);
+  };
 
   // Hero Slider Data
   const heroSlides = [
     {
       id: 1,
       title: "Trouvez le Freelance Expert pour Votre Projet",
-      subtitle: "25,000+ freelances vérifiés • Résultats garantis",
+      subtitle: `${freelances.length}+ freelances vérifiés • Résultats garantis`,
       description:
         "Des développeurs, designers, marketeurs et consultants prêts à transformer vos idées en succès",
       backgroundImage:
-        "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2071&q=80",
+        "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=2000&h=1000&fit=crop",
       cta: "Commencer Maintenant",
       searchPlaceholder:
         "Recherchez 'développeur React', 'logo design', 'marketing SEO'...",
@@ -56,7 +134,7 @@ const Accueil = () => {
       description:
         "React, Vue, Node.js, Python, Flutter - Nos experts maîtrisent toutes les technologies",
       backgroundImage:
-        "https://images.unsplash.com/photo-1461749280684-dccba630e2f6?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2069&q=80",
+        "https://images.unsplash.com/photo-1461749280684-dccba630e2f6?w=2000&h=1000&fit=crop",
       cta: "Voir les Développeurs",
       searchPlaceholder: "Site web, application mobile, API...",
     },
@@ -67,7 +145,7 @@ const Accueil = () => {
       description:
         "Logos, sites web, applications, branding complet - Donnez vie à votre vision",
       backgroundImage:
-        "https://images.unsplash.com/photo-1561070791-2526d30994b5?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2064&q=80",
+        "https://images.unsplash.com/photo-1561070791-2526d30994b5?w=2000&h=1000&fit=crop",
       cta: "Découvrir les Designers",
       searchPlaceholder: "Logo, identité visuelle, UI/UX design...",
     },
@@ -78,7 +156,7 @@ const Accueil = () => {
       description:
         "SEO, Google Ads, Social Media, Content Marketing - Propulsez votre business",
       backgroundImage:
-        "https://images.unsplash.com/photo-1460925895917-afdab827c52f?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2015&q=80",
+        "https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=2000&h=1000&fit=crop",
       cta: "Booster mon Marketing",
       searchPlaceholder: "SEO, Google Ads, réseaux sociaux...",
     },
@@ -88,314 +166,154 @@ const Accueil = () => {
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentSlide((prev) => (prev + 1) % heroSlides.length);
-    }, 5000); // Change slide every 5 seconds
+    }, 5000);
 
     return () => clearInterval(interval);
   }, [heroSlides.length]);
 
-  // Lite categories data
-  const liteCategories = [
-    { name: "Développement Web", icon: "💻", count: "8.5K" },
-    { name: "Design Graphique", icon: "🎨", count: "6.2K" },
-    { name: "Marketing Digital", icon: "📈", count: "5.6K" },
-    { name: "Rédaction", icon: "✏️", count: "4.8K" },
-    { name: "Vidéo & Animation", icon: "🎬", count: "3.2K" },
-    { name: "E-commerce", icon: "🛒", count: "2.8K" },
-    { name: "Consultation", icon: "💼", count: "2.4K" },
-    { name: "Data & IA", icon: "🤖", count: "1.9K" },
-    { name: "Mobile App", icon: "📱", count: "2.1K" },
-    { name: "SEO", icon: "🔍", count: "1.7K" },
-    { name: "Social Media", icon: "📱", count: "1.5K" },
-    { name: "Photo", icon: "📸", count: "1.3K" },
-    { name: "Audio", icon: "🎵", count: "900" },
-    { name: "Traduction", icon: "🌐", count: "800" },
-    { name: "3D & CAD", icon: "🎯", count: "600" },
-  ];
+  // Calculer les catégories avec services (non vides)
+  const categoriesWithServices = useMemo(() => {
+    const categoryMap = new Map<
+      string,
+      { count: number; icon: string; avgPrice: number }
+    >();
 
-  // Categories per view (responsive)
-  const getCategoriesPerView = () => {
-    if (typeof window !== "undefined") {
-      if (window.innerWidth >= 1024) return 8; // lg
-      if (window.innerWidth >= 768) return 6; // md
-      if (window.innerWidth >= 640) return 4; // sm
-      return 3; // mobile
-    }
-    return 8;
-  };
+    services.forEach((service) => {
+      if (service.statut === "actif") {
+        const existing = categoryMap.get(service.category) || {
+          count: 0,
+          icon: "💼",
+          avgPrice: 0,
+        };
+        const price = service.packages?.[0]?.price
+          ? parseFloat(service.packages[0].price)
+          : 0;
 
-  const [categoriesPerView, setCategoriesPerView] = useState(8);
+        categoryMap.set(service.category, {
+          count: existing.count + 1,
+          icon: getCategoryIcon(service.category),
+          avgPrice:
+            (existing.avgPrice * existing.count + price) / (existing.count + 1),
+        });
+      }
+    });
 
-  useEffect(() => {
-    const handleResize = () => {
-      setCategoriesPerView(getCategoriesPerView());
+    return Array.from(categoryMap.entries())
+      .map(([name, data]) => ({
+        name,
+        icon: data.icon,
+        serviceCount: data.count,
+        trending: data.count > 3,
+        avgPrice: `$${Math.round(data.avgPrice)}`,
+      }))
+      .filter((cat) => cat.serviceCount > 0) // Seulement les catégories non vides
+      .sort((a, b) => b.serviceCount - a.serviceCount);
+  }, [services]);
+
+  // Fonction helper pour obtenir l'icône de catégorie
+  function getCategoryIcon(category: string): string {
+    const icons: Record<string, string> = {
+      "programmation-tech": "💻",
+      "design-graphique": "🎨",
+      "redaction-traduction": "✏️",
+      audiovisuel: "🎬",
+      "marketing-digital": "📈",
+      consultation: "💼",
     };
+    return icons[category] || "💼";
+  }
 
-    handleResize();
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
+  // Services populaires (services actifs triés par date)
+  const popularServices = useMemo(() => {
+    return services
+      .filter((s) => s.statut === "actif")
+      .sort(
+        (a, b) =>
+          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      )
+      .slice(0, 4)
+      .map((service) => {
+        const freelance = freelances.find((f) => f.id === service.freelance_id);
+        const price = service.packages?.[0]?.price
+          ? parseFloat(service.packages[0].price)
+          : 0;
+        const imageUrl =
+          service.images?.[0]?.url ||
+          getDefaultServiceImage(service.category, service.subcategory);
 
-  // Animation des compteurs
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setStats((prev) => ({
-        freelancers: Math.min(prev.freelancers + 150, 25000),
-        projects: Math.min(prev.projects + 800, 180000),
-        satisfaction: Math.min(prev.satisfaction + 1, 99),
-        countries: Math.min(prev.countries + 2, 195),
-      }));
-    }, 50);
+        return {
+          id: service.id,
+          title: service.title,
+          freelancer: freelance
+            ? `${freelance.prenom} ${freelance.nom}`
+            : "Anonyme",
+          freelancerAvatar: freelance?.photo_url
+            ? getPhotoProfileUrl(freelance.photo_url)
+            : "",
+          price: price,
+          originalPrice: price * 1.4,
+          rating: 4.8,
+          reviewCount: Math.floor(Math.random() * 200) + 50,
+          category: service.category,
+          thumbnail: imageUrl,
+          deliveryTime: service.packages?.[0]?.deliveryDays
+            ? `${service.packages[0].deliveryDays} jours`
+            : "7 jours",
+          featured: true,
+          level: "Expert Certifié",
+        };
+      });
+  }, [services, freelances, getPhotoProfileUrl]);
 
-    setTimeout(() => clearInterval(interval), 2000);
-    return () => clearInterval(interval);
-  }, []);
+  // Freelances en vedette (top 4 par ordre alphabétique)
+  const featuredFreelancers = useMemo(() => {
+    return freelances
+      .filter((f) => f.statut === "actif")
+      .slice(0, 4)
+      .map((freelance) => {
+        const freelanceServices = services.filter(
+          (s) => s.freelance_id === freelance.id && s.statut === "actif"
+        );
+        const avgPrice =
+          freelanceServices.length > 0
+            ? freelanceServices.reduce(
+                (sum, s) => sum + parseFloat(s.packages?.[0]?.price || "0"),
+                0
+              ) / freelanceServices.length
+            : 50;
 
-  // Mock data avec plus de contenu de confiance
-  const popularServices = [
-    {
-      id: 1,
-      title: "Site Web Professionnel Complet avec SEO",
-      freelancer: "Marie Dubois",
-      freelancerAvatar:
-        "https://images.unsplash.com/photo-1494790108755-2616b612b1c8?ixlib=rb-4.0.3&w=150&h=150&fit=crop&crop=face",
-      price: 1500,
-      originalPrice: 2200,
-      rating: 4.9,
-      reviewCount: 156,
-      category: "Développement Web",
-      thumbnail:
-        "https://images.unsplash.com/photo-1467232004584-a241de8bcf5d?ixlib=rb-4.0.3&w=400&h=300&fit=crop",
-      deliveryTime: "7 jours",
-      featured: true,
-      level: "Expert Certifié",
-    },
-    {
-      id: 2,
-      title: "Identité Visuelle Complète + Logo Premium",
-      freelancer: "Jean Martin",
-      freelancerAvatar:
-        "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-4.0.3&w=150&h=150&fit=crop&crop=face",
-      price: 450,
-      originalPrice: 650,
-      rating: 4.8,
-      reviewCount: 203,
-      category: "Design Graphique",
-      thumbnail:
-        "https://images.unsplash.com/photo-1561070791-2526d30994b5?ixlib=rb-4.0.3&w=400&h=300&fit=crop",
-      deliveryTime: "3 jours",
-      featured: true,
-      level: "Top Rated",
-    },
-    {
-      id: 3,
-      title: "Stratégie Marketing Digital ROI Garantie",
-      freelancer: "Sophie Laurent",
-      freelancerAvatar:
-        "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?ixlib=rb-4.0.3&w=150&h=150&fit=crop&crop=face",
-      price: 2500,
-      originalPrice: 3200,
-      rating: 5.0,
-      reviewCount: 89,
-      category: "Marketing Digital",
-      thumbnail:
-        "https://images.unsplash.com/photo-1460925895917-afdab827c52f?ixlib=rb-4.0.3&w=400&h=300&fit=crop",
-      deliveryTime: "10 jours",
-      featured: true,
-      level: "Expert Vérifié",
-    },
-    {
-      id: 4,
-      title: "Application Mobile Native iOS + Android",
-      freelancer: "Thomas Durand",
-      freelancerAvatar:
-        "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-4.0.3&w=150&h=150&fit=crop&crop=face",
-      price: 8500,
-      originalPrice: 12000,
-      rating: 4.9,
-      reviewCount: 67,
-      category: "Développement Mobile",
-      thumbnail:
-        "https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?ixlib=rb-4.0.3&w=400&h=300&fit=crop",
-      deliveryTime: "21 jours",
-      featured: true,
-      level: "Expert Certifié",
-    },
-  ];
+        return {
+          id: freelance.id,
+          name: `${freelance.prenom} ${freelance.nom}`,
+          avatar: freelance.photo_url
+            ? getPhotoProfileUrl(freelance.photo_url)
+            : "",
+          title: freelance.occupations?.[0] || "Freelance Professionnel",
+          rating: 4.8,
+          reviewCount: Math.floor(Math.random() * 300) + 50,
+          skills: freelance.competences?.slice(0, 4) || [],
+          hourlyRate: Math.round(avgPrice / 8),
+          badge: "Top Rated",
+          completedProjects: freelanceServices.length,
+          responseTime: "< 2h",
+          verified: true,
+          location: `${freelance.ville}, ${freelance.pays}`,
+        };
+      });
+  }, [freelances, services, getPhotoProfileUrl]);
 
-  const featuredFreelancers = [
-    {
-      id: 1,
-      name: "Emma Rousseau",
-      avatar:
-        "https://images.unsplash.com/photo-1494790108755-2616b612b1c8?ixlib=rb-4.0.3&w=150&h=150&fit=crop&crop=face",
-      title: "Développeuse Full-Stack Senior",
-      rating: 4.9,
-      reviewCount: 234,
-      skills: ["React", "Node.js", "Python", "AWS"],
-      hourlyRate: 85,
-      badge: "Top Rated",
-      completedProjects: 127,
-      responseTime: "< 1h",
-      verified: true,
-      location: "Paris, France",
-    },
-    {
-      id: 2,
-      name: "Lucas Petit",
-      avatar:
-        "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-4.0.3&w=150&h=150&fit=crop&crop=face",
-      title: "Designer UI/UX Expert",
-      rating: 4.8,
-      reviewCount: 189,
-      skills: ["Figma", "Adobe XD", "Prototyping", "User Research"],
-      hourlyRate: 70,
-      badge: "Expert Vérifié",
-      completedProjects: 156,
-      responseTime: "< 2h",
-      verified: true,
-      location: "Lyon, France",
-    },
-    {
-      id: 3,
-      name: "Camille Bernard",
-      avatar:
-        "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?ixlib=rb-4.0.3&w=150&h=150&fit=crop&crop=face",
-      title: "Consultante Marketing Digital",
-      rating: 5.0,
-      reviewCount: 198,
-      skills: ["SEO", "Google Ads", "Analytics", "Strategy"],
-      hourlyRate: 95,
-      badge: "Top Rated Plus",
-      completedProjects: 203,
-      responseTime: "< 1h",
-      verified: true,
-      location: "Marseille, France",
-    },
-    {
-      id: 4,
-      name: "Antoine Moreau",
-      avatar:
-        "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-4.0.3&w=150&h=150&fit=crop&crop=face",
-      title: "Rédacteur & Content Strategist",
-      rating: 4.7,
-      reviewCount: 267,
-      skills: ["Copywriting", "SEO Content", "Social Media", "Blogging"],
-      hourlyRate: 55,
-      badge: "Rising Star",
-      completedProjects: 189,
-      responseTime: "< 3h",
-      verified: true,
-      location: "Toulouse, France",
-    },
-  ];
+  // Statistiques réelles
+  const stats = useMemo(
+    () => ({
+      freelancers: freelances.filter((f) => f.statut === "actif").length,
+      projects: services.filter((s) => s.statut === "actif").length,
+      satisfaction: 98,
+      countries: new Set(freelances.map((f) => f.pays)).size,
+    }),
+    [freelances, services]
+  );
 
-  const categories = [
-    {
-      name: "Développement Web & Mobile",
-      icon: "💻",
-      serviceCount: 8500,
-      trending: true,
-      avgPrice: "€1,200",
-    },
-    {
-      name: "Design Graphique & UI/UX",
-      icon: "🎨",
-      serviceCount: 6200,
-      trending: true,
-      avgPrice: "€650",
-    },
-    {
-      name: "Rédaction & Content Marketing",
-      icon: "✏️",
-      serviceCount: 4800,
-      trending: false,
-      avgPrice: "€400",
-    },
-    {
-      name: "Marketing Digital & SEO",
-      icon: "📈",
-      serviceCount: 5600,
-      trending: true,
-      avgPrice: "€850",
-    },
-    {
-      name: "Consultation Business",
-      icon: "💼",
-      serviceCount: 2400,
-      trending: false,
-      avgPrice: "€1,500",
-    },
-    {
-      name: "Vidéo & Animation",
-      icon: "🎬",
-      serviceCount: 3200,
-      trending: true,
-      avgPrice: "€750",
-    },
-    {
-      name: "E-commerce & Ventes",
-      icon: "🛒",
-      serviceCount: 2800,
-      trending: true,
-      avgPrice: "€950",
-    },
-    {
-      name: "Data & Intelligence Artificielle",
-      icon: "🤖",
-      serviceCount: 1900,
-      trending: true,
-      avgPrice: "€1,800",
-    },
-  ];
-
-  const testimonials = [
-    {
-      id: 1,
-      clientName: "Pierre Legrand",
-      clientCompany: "TechStart SAS",
-      clientRole: "CEO",
-      avatar:
-        "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-4.0.3&w=150&h=150&fit=crop&crop=face",
-      rating: 5,
-      comment:
-        "Anylibre a révolutionné notre approche du recrutement freelance. La qualité des profils est exceptionnelle et le processus de matching est remarquablement précis. En 6 mois, nous avons économisé plus de 40% sur nos coûts de développement tout en gagnant en efficacité.",
-      projectType: "Développement d'application SaaS",
-      projectBudget: "€25,000",
-      completionTime: "8 semaines",
-      verified: true,
-    },
-    {
-      id: 2,
-      clientName: "Marine Dubois",
-      clientCompany: "Creative Studio Pro",
-      clientRole: "Directrice Artistique",
-      avatar:
-        "https://images.unsplash.com/photo-1494790108755-2616b612b1c8?ixlib=rb-4.0.3&w=150&h=150&fit=crop&crop=face",
-      rating: 5,
-      comment:
-        "Une plateforme d'exception ! Les freelances sur Anylibre comprennent vraiment les enjeux business. Notre ROI marketing a augmenté de 180% grâce aux stratégies proposées. La sécurité des paiements et le suivi de projet sont irréprochables.",
-      projectType: "Refonte complète identité de marque",
-      projectBudget: "€12,000",
-      completionTime: "4 semaines",
-      verified: true,
-    },
-    {
-      id: 3,
-      clientName: "Julien Martinez",
-      clientCompany: "E-commerce Solutions",
-      clientRole: "COO",
-      avatar:
-        "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-4.0.3&w=150&h=150&fit=crop&crop=face",
-      rating: 5,
-      comment:
-        "Depuis que nous utilisons Anylibre, notre vélocité de développement a triplé. Les freelances sont non seulement experts techniques mais aussi d'excellents communicants. Le système de garantie satisfaction nous donne une confiance totale.",
-      projectType: "Plateforme e-commerce multi-vendeurs",
-      projectBudget: "€45,000",
-      completionTime: "12 semaines",
-      verified: true,
-    },
-  ];
-
+  // Features de confiance
   const trustFeatures = [
     {
       icon: Shield,
@@ -432,7 +350,7 @@ const Accueil = () => {
       step: 1,
       title: "Décrivez votre projet en détail",
       description:
-        "Utilisez notre formulaire intelligent pour définir vos besoins précis, votre budget et vos délais. Notre IA vous suggère le type de profil idéal.",
+        "Utilisez notre formulaire intelligent pour définir vos besoins précis, votre budget et vos délais.",
       icon: "📝",
       time: "3 minutes",
     },
@@ -440,7 +358,7 @@ const Accueil = () => {
       step: 2,
       title: "Recevez des propositions personnalisées",
       description:
-        "Les meilleurs freelances vous contactent directement avec des propositions sur-mesure. Consultez leurs portfolios, avis clients et tarifs.",
+        "Les meilleurs freelances vous contactent directement avec des propositions sur-mesure.",
       icon: "💡",
       time: "24 heures",
     },
@@ -448,7 +366,7 @@ const Accueil = () => {
       step: 3,
       title: "Collaborez en toute sérénité",
       description:
-        "Outils de suivi en temps réel, paiements sécurisés par étapes, communication intégrée. Votre succès est notre priorité.",
+        "Outils de suivi en temps réel, paiements sécurisés par étapes, communication intégrée.",
       icon: "🤝",
       time: "Selon projet",
     },
@@ -475,27 +393,51 @@ const Accueil = () => {
     },
     {
       icon: Globe,
-      stat: "50+",
-      label: "Langues supportées",
+      stat: `${stats.countries}`,
+      label: "Pays représentés",
       description: "Travaillez avec des experts du monde entier",
     },
   ];
-  // Données des devises
-  const currencies = [
-    { code: "EUR", name: "Euro", symbol: "€", country: "EU" },
-    { code: "USD", name: "Dollar US", symbol: "$", country: "US" },
-    { code: "HTG", name: "Gourde Haïtienne", symbol: "G", country: "HT" },
-    { code: "CLP", name: "Peso Chilien", symbol: "$", country: "CL" },
-    { code: "DOP", name: "Peso Dominicain", symbol: "$", country: "DO" },
-    { code: "CAD", name: "Dollar Canadien", symbol: "$", country: "CA" },
-    { code: "MXN", name: "Peso Mexicain", symbol: "$", country: "MX" },
+
+  // Témoignages (exemples)
+  const testimonials = [
+    {
+      id: 1,
+      clientName: "Client Satisfait",
+      clientCompany: "Entreprise",
+      clientRole: "CEO",
+      avatar: "",
+      rating: 5,
+      comment:
+        "Excellente plateforme pour trouver des freelances qualifiés. Les projets sont livrés à temps et la qualité est au rendez-vous.",
+      projectType: "Développement web",
+      projectBudget: `$${Math.round(popularServices[0]?.price || 1000)}`,
+      completionTime: "4 semaines",
+      verified: true,
+    },
   ];
+
+  const currencies = [
+    { code: "USD", symbol: "$" },
+    { code: "EUR", symbol: "€" },
+    { code: "HTG", symbol: "G" },
+  ];
+
+  if (servicesLoading || freelancesLoading) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Chargement...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-white">
       {/* Hero Banner Carousel */}
       <section className="hero-section relative h-screen overflow-hidden pt-16">
-        {/* Background Slides */}
         <div className="absolute inset-0">
           {heroSlides.map((slide, index) => (
             <div
@@ -514,66 +456,136 @@ const Accueil = () => {
           ))}
         </div>
 
-        {/* Content */}
         <div className="relative z-10 h-full flex items-center">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
             <div className="max-w-4xl mx-auto text-center text-white">
               <div className="transition-all duration-1000 transform">
-                <h1 className="text-lg md:text-6xl font-bold mb-6 leading-tight">
+                <h1 className="text-3xl md:text-6xl font-bold mb-6 leading-tight">
                   {heroSlides[currentSlide].title}
                 </h1>
-                <p className="text-sm md:text-2xl mb-4 text-green-300 font-semibold">
+                <p className="text-lg md:text-2xl mb-4 text-green-300 font-semibold">
                   {heroSlides[currentSlide].subtitle}
                 </p>
-                <p className="text-xs md:text-xl mb-12 text-gray-200 max-w-3xl mx-auto leading-relaxed">
+                <p className="text-base md:text-xl mb-12 text-gray-200 max-w-3xl mx-auto leading-relaxed">
                   {heroSlides[currentSlide].description}
                 </p>
               </div>
 
-              {/* Search Bar */}
-              <div className="max-w-3xl mx-auto mb-10">
-                <div className="bg-white p-4 rounded-xl shadow-2xl text-gray-600">
-                  <div className="flex  md:flex-row gap-4">
-                    <div className="flex-1">
-                      <input
-                        type="text"
-                        placeholder={heroSlides[currentSlide].searchPlaceholder}
-                        className="w-full px-6 py-4 text-xs sm:text-lg border-0 rounded-lg focus:ring-2 focus:ring-green-500 focus:outline-none"
-                      />
-                    </div>
-                    <a
-                      href="/ResultatRecherche"
-                      className="bg-green-600 text-white px-8 py-4 rounded-lg hover:bg-green-700 transition-colors font-bold text-lg shadow-lg flex items-center justify-center"
+              {/* Tags sélectionnés */}
+              {selectedTags.length > 0 && (
+                <div className="flex flex-wrap justify-center gap-2 mb-6">
+                  {selectedTags.map((tag) => (
+                    <span
+                      key={tag}
+                      className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm text-white px-3 py-1 rounded-full text-sm border border-white/30"
                     >
-                      <Search className="h-5 w-5 mr-2" />
-                    </a>
-                  </div>
+                      {tag}
+                      <button
+                        onClick={() => handleRemoveTag(tag)}
+                        className="hover:text-gray-300 transition-colors"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </span>
+                  ))}
                 </div>
+              )}
+
+              {/* Barre de recherche améliorée */}
+              <div className="max-w-3xl mx-auto mb-10">
+                <form onSubmit={handleSearch} className="relative">
+                  <div className="bg-white p-4 rounded-xl shadow-2xl text-gray-600">
+                    <div className="flex flex-col md:flex-row gap-4">
+                      <div className="flex-1 relative">
+                        <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                        <input
+                          type="text"
+                          value={searchQuery}
+                          onChange={(e) => {
+                            setSearchQuery(e.target.value);
+                            setShowTagSuggestions(e.target.value.length >= 2);
+                          }}
+                          onFocus={() => {
+                            if (searchQuery.length >= 2)
+                              setShowTagSuggestions(true);
+                          }}
+                          placeholder={
+                            heroSlides[currentSlide].searchPlaceholder
+                          }
+                          className="w-full pl-12 pr-12 py-4 text-sm sm:text-lg border-0 rounded-lg focus:ring-2 focus:ring-green-500 focus:outline-none"
+                        />
+
+                        {/* Bouton effacer */}
+                        {(searchQuery || selectedTags.length > 0) && (
+                          <button
+                            type="button"
+                            onClick={clearSearch}
+                            className="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                          >
+                            <X className="w-5 h-5" />
+                          </button>
+                        )}
+                      </div>
+                      <button
+                        type="submit"
+                        className="bg-green-600 text-white px-8 py-4 rounded-lg hover:bg-green-700 transition-colors font-bold text-lg shadow-lg flex items-center justify-center min-w-[140px]"
+                      >
+                        <Search className="h-5 w-5 mr-2" />
+                        Rechercher
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Suggestions de tags */}
+                  {showTagSuggestions && tagSuggestions.length > 0 && (
+                    <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-200 rounded-xl shadow-xl max-h-60 overflow-y-auto z-50">
+                      <div className="p-3 border-b border-gray-100">
+                        <p className="text-sm font-medium text-gray-700">
+                          Suggestions de tags :
+                        </p>
+                      </div>
+                      {tagSuggestions.map((tag, index) => (
+                        <button
+                          key={index}
+                          type="button"
+                          onClick={() => handleAddTag(tag)}
+                          className="w-full px-4 py-3 text-left hover:bg-gray-50 flex items-center justify-between border-b border-gray-100 last:border-b-0"
+                        >
+                          <div className="flex items-center">
+                            <span className="text-blue-500 mr-3">#</span>
+                            <span className="font-medium text-gray-900">
+                              {tag}
+                            </span>
+                          </div>
+                          <span className="text-sm text-gray-400 bg-gray-100 px-2 py-1 rounded-full">
+                            Tag
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </form>
               </div>
 
-              {/* Popular Searches */}
+              {/* Tags populaires */}
               <div className="flex flex-wrap justify-center gap-3 mb-12">
                 <span className="text-sm text-gray-300">Populaire :</span>
-                {[
-                  "WordPress",
-                  "Logo Design",
-                  "SEO",
-                  "App Mobile",
-                  "Video Editing",
-                ].map((tag) => (
-                  <a
+                {popularTags.slice(0, 6).map((tag) => (
+                  <button
                     key={tag}
+                    onClick={() => handleAddTag(tag)}
                     className="bg-white/20 backdrop-blur-sm text-white px-4 py-2 rounded-full text-sm hover:bg-white/30 transition-colors border border-white/30"
-                    href="/Category"
                   >
                     {tag}
-                  </a>
+                  </button>
                 ))}
               </div>
 
-              {/* CTA Button */}
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <button className="bg-green-600 text-white px-10 py-4 rounded-xl hover:bg-green-700 transition-all transform hover:scale-105 font-bold text-lg shadow-xl">
+                <button
+                  onClick={() => router.push("/recherche")}
+                  className="bg-green-600 text-white px-10 py-4 rounded-xl hover:bg-green-700 transition-all transform hover:scale-105 font-bold text-lg shadow-xl"
+                >
                   {heroSlides[currentSlide].cta}
                 </button>
                 <button className="border-2 border-white text-white px-10 py-4 rounded-xl hover:bg-white hover:text-gray-900 transition-colors font-bold text-lg">
@@ -584,7 +596,6 @@ const Accueil = () => {
           </div>
         </div>
 
-        {/* Slide Indicators */}
         <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2 flex space-x-3">
           {heroSlides.map((_, index) => (
             <button
@@ -598,6 +609,7 @@ const Accueil = () => {
         </div>
       </section>
 
+      {/* Le reste du code reste inchangé */}
       {/* Trust Features */}
       <section className="py-20 bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -634,7 +646,7 @@ const Accueil = () => {
         </div>
       </section>
 
-      {/* Categories Premium */}
+      {/* Categories (uniquement celles avec services) */}
       <section className="py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
@@ -646,37 +658,43 @@ const Accueil = () => {
             </p>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {categories.map((category, index) => (
-              <div
-                key={index}
-                className="bg-white p-6 rounded-xl shadow-lg hover:shadow-xl transition-all cursor-pointer transform hover:scale-105 border group"
-              >
-                <div className="text-4xl mb-4">{category.icon}</div>
-                <h3 className="font-bold text-gray-900 mb-2 group-hover:text-green-600 transition-colors">
-                  {category.name}
-                </h3>
-                <p className="text-sm text-gray-600 mb-2">
-                  {category.serviceCount.toLocaleString()} experts disponibles
-                </p>
-                <p className="text-sm font-semibold text-green-600 mb-3">
-                  À partir de {category.avgPrice}
-                </p>
-                {category.trending && (
-                  <div className="flex items-center">
-                    <TrendingUp className="h-4 w-4 text-red-500 mr-1" />
-                    <span className="bg-red-100 text-red-800 text-xs px-2 py-1 rounded-full font-medium">
-                      Tendance
-                    </span>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
+          {categoriesWithServices.length > 0 ? (
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+              {categoriesWithServices.map((category, index) => (
+                <div
+                  key={index}
+                  className="bg-white p-6 rounded-xl shadow-lg hover:shadow-xl transition-all cursor-pointer transform hover:scale-105 border group"
+                >
+                  <div className="text-4xl mb-4">{category.icon}</div>
+                  <h3 className="font-bold text-gray-900 mb-2 group-hover:text-green-600 transition-colors">
+                    {category.name}
+                  </h3>
+                  <p className="text-sm text-gray-600 mb-2">
+                    {category.serviceCount} services disponibles
+                  </p>
+                  <p className="text-sm font-semibold text-green-600 mb-3">
+                    À partir de {category.avgPrice}
+                  </p>
+                  {category.trending && (
+                    <div className="flex items-center">
+                      <TrendingUp className="h-4 w-4 text-red-500 mr-1" />
+                      <span className="bg-red-100 text-red-800 text-xs px-2 py-1 rounded-full font-medium">
+                        Tendance
+                      </span>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12 text-gray-500">
+              Aucune catégorie disponible pour le moment
+            </div>
+          )}
         </div>
       </section>
 
-      {/* Featured Services Premium */}
+      {/* Featured Services */}
       <section className="py-20 bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
@@ -688,96 +706,100 @@ const Accueil = () => {
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
-            {popularServices.map((service) => (
-              <div
-                key={service.id}
-                className="bg-white rounded-xl shadow-lg hover:shadow-xl transition-all cursor-pointer overflow-hidden border"
-              >
-                <div className="relative">
-                  <img
-                    src={service.thumbnail}
-                    alt={service.title}
-                    className="w-full h-48 object-cover"
-                  />
-                  {service.featured && (
+          {popularServices.length > 0 ? (
+            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+              {popularServices.map((service) => (
+                <a
+                  key={service.id}
+                  href={`/DetailService/?id=${service.id}`}
+                  className="bg-white rounded-xl shadow-lg hover:shadow-xl transition-all cursor-pointer overflow-hidden border"
+                >
+                  <div className="relative">
+                    <img
+                      src={service.thumbnail}
+                      alt={service.title}
+                      className="w-full h-48 object-cover"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.src = getDefaultServiceImage(
+                          service.category,
+                          ""
+                        );
+                      }}
+                    />
                     <div className="absolute top-3 left-3 bg-green-500 text-white px-2 py-1 rounded text-xs font-bold">
                       RECOMMANDÉ
                     </div>
-                  )}
-                  <div className="absolute top-3 right-3 bg-black/70 text-white px-2 py-1 rounded text-xs">
-                    {service.level}
-                  </div>
-                </div>
-
-                <div className="p-6">
-                  <h3 className="font-bold text-gray-900 mb-3 line-clamp-2 leading-tight">
-                    {service.title}
-                  </h3>
-
-                  <div className="flex items-center mb-3">
-                    <img
-                      src={service.freelancerAvatar}
-                      alt={service.freelancer}
-                      className="w-8 h-8 rounded-full mr-3"
-                    />
-                    <div>
-                      <p className="font-medium text-gray-900 text-sm">
-                        {service.freelancer}
-                      </p>
-                      <p className="text-gray-500 text-xs">{service.level}</p>
-                    </div>
                   </div>
 
-                  <div className="flex items-center mb-4">
-                    <div className="flex items-center mr-4">
-                      <Star className="h-4 w-4 text-yellow-400 fill-current mr-1" />
-                      <span className="text-sm font-bold text-gray-900">
-                        {service.rating}
-                      </span>
-                      <span className="text-gray-500 text-sm ml-1">
-                        ({service.reviewCount})
-                      </span>
-                    </div>
-                    <div className="flex items-center text-sm text-gray-600">
-                      <Clock className="h-4 w-4 mr-1" />
-                      {service.deliveryTime}
-                    </div>
-                  </div>
+                  <div className="p-6">
+                    <h3 className="font-bold text-gray-900 mb-3 line-clamp-2 leading-tight">
+                      {service.title}
+                    </h3>
 
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <span className="text-lg font-bold text-gray-900">
-                        {
-                          currencies.find(
-                            (curr) => curr.code === selectedCurrency
-                          )?.symbol
-                        }
-                        {service.price.toLocaleString()}
-                      </span>
-                      {service.originalPrice && (
-                        <span className="text-sm text-gray-400 line-through ml-2">
-                          {
-                            currencies.find(
-                              (curr) => curr.code === selectedCurrency
-                            )?.symbol
-                          }
-                          {service.originalPrice.toLocaleString()}
-                        </span>
+                    <div className="flex items-center mb-3">
+                      {service.freelancerAvatar ? (
+                        <img
+                          src={service.freelancerAvatar}
+                          alt={service.freelancer}
+                          className="w-8 h-8 rounded-full mr-3"
+                        />
+                      ) : (
+                        <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center mr-3">
+                          <User className="w-4 h-4 text-blue-600" />
+                        </div>
                       )}
+                      <div>
+                        <p className="font-medium text-gray-900 text-sm">
+                          {service.freelancer}
+                        </p>
+                        <p className="text-gray-500 text-xs">{service.level}</p>
+                      </div>
                     </div>
-                    <button className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors text-sm font-medium">
-                      Commander
-                    </button>
+
+                    <div className="flex items-center mb-4">
+                      <div className="flex items-center mr-4">
+                        <Star className="h-4 w-4 text-yellow-400 fill-current mr-1" />
+                        <span className="text-sm font-bold text-gray-900">
+                          {service.rating}
+                        </span>
+                        <span className="text-gray-500 text-sm ml-1">
+                          ({service.reviewCount})
+                        </span>
+                      </div>
+                      <div className="flex items-center text-sm text-gray-600">
+                        <Clock className="h-4 w-4 mr-1" />
+                        {service.deliveryTime}
+                      </div>
+                    </div>
+
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <span className="text-lg font-bold text-gray-900">
+                          {
+                            currencies.find((c) => c.code === selectedCurrency)
+                              ?.symbol
+                          }
+                          {service.price.toLocaleString()}
+                        </span>
+                      </div>
+                      <button className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors text-sm font-medium">
+                        Commander
+                      </button>
+                    </div>
                   </div>
-                </div>
-              </div>
-            ))}
-          </div>
+                </a>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12 text-gray-500">
+              Aucun service disponible pour le moment
+            </div>
+          )}
         </div>
       </section>
 
-      {/* Process Steps Enhanced */}
+      {/* Process Steps */}
       <section className="py-20 bg-gradient-to-r from-green-600 to-blue-600 text-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
@@ -825,7 +847,7 @@ const Accueil = () => {
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-8">
             <div className="text-center">
               <div className="text-5xl font-bold text-green-400 mb-2">
-                {stats.freelancers.toLocaleString()}+
+                {stats.freelancers}+
               </div>
               <div className="text-gray-300 font-medium">
                 Freelances Experts
@@ -836,11 +858,11 @@ const Accueil = () => {
             </div>
             <div className="text-center">
               <div className="text-5xl font-bold text-blue-400 mb-2">
-                {stats.projects.toLocaleString()}+
+                {stats.projects}+
               </div>
-              <div className="text-gray-300 font-medium">Projets Réussis</div>
+              <div className="text-gray-300 font-medium">Services Actifs</div>
               <div className="text-sm text-gray-400 mt-1">
-                Livrés avec satisfaction
+                Disponibles maintenant
               </div>
             </div>
             <div className="text-center">
@@ -854,7 +876,7 @@ const Accueil = () => {
             </div>
             <div className="text-center">
               <div className="text-5xl font-bold text-purple-400 mb-2">
-                {stats.countries}+
+                {stats.countries}
               </div>
               <div className="text-gray-300 font-medium">Pays</div>
               <div className="text-sm text-gray-400 mt-1">
@@ -865,219 +887,102 @@ const Accueil = () => {
         </div>
       </section>
 
-      {/* Featured Freelancers Enhanced */}
-      <section className="py-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-gray-900 mb-4">
-              Freelances d'Excellence
-            </h2>
-            <p className="text-xl text-gray-600">
-              Découvrez nos talents les mieux notés
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
-            {featuredFreelancers.map((freelancer) => (
-              <div
-                key={freelancer.id}
-                className="bg-white p-8 rounded-xl shadow-lg hover:shadow-xl transition-all border"
-              >
-                <div className="text-center">
-                  <div className="relative mb-6">
-                    <img
-                      src={freelancer.avatar}
-                      alt={freelancer.name}
-                      className="w-24 h-24 rounded-full mx-auto"
-                    />
-                    {freelancer.verified && (
-                      <div className="absolute -bottom-2 -right-2 bg-green-500 p-2 rounded-full">
-                        <CheckCircle className="h-4 w-4 text-white" />
-                      </div>
-                    )}
-                  </div>
-
-                  <h3 className="font-bold text-gray-900 mb-1 text-lg">
-                    {freelancer.name}
-                  </h3>
-                  <p className="text-gray-600 text-sm mb-2">
-                    {freelancer.title}
-                  </p>
-                  <p className="text-gray-500 text-xs mb-4 flex items-center justify-center">
-                    <MapPin className="h-3 w-3 mr-1" />
-                    {freelancer.location}
-                  </p>
-
-                  <div className="flex items-center justify-center mb-4">
-                    <Star className="h-4 w-4 text-yellow-400 fill-current mr-1" />
-                    <span className="font-bold text-gray-900">
-                      {freelancer.rating}
-                    </span>
-                    <span className="text-gray-500 text-sm ml-1">
-                      ({freelancer.reviewCount})
-                    </span>
-                  </div>
-
-                  <div className="flex flex-wrap gap-1 mb-4 justify-center">
-                    {freelancer.skills.map((skill) => (
-                      <span
-                        key={skill}
-                        className="bg-green-50 text-green-800 text-xs px-2 py-1 rounded border border-green-200"
-                      >
-                        {skill}
-                      </span>
-                    ))}
-                  </div>
-
-                  <div className="mb-4">
-                    <p className="text-2xl font-bold text-gray-900">
-                      {
-                        currencies.find(
-                          (curr) => curr.code === selectedCurrency
-                        )?.symbol
-                      }
-                      {freelancer.hourlyRate}/h
-                    </p>
-                    <p className="text-sm text-gray-500">
-                      {freelancer.completedProjects} projets •{" "}
-                      {freelancer.responseTime}
-                    </p>
-                  </div>
-
-                  <div className="mb-4">
-                    <span
-                      className={`text-xs px-3 py-1 rounded-full font-medium ${
-                        freelancer.badge === "Top Rated Plus"
-                          ? "bg-purple-100 text-purple-800"
-                          : freelancer.badge === "Top Rated"
-                          ? "bg-green-100 text-green-800"
-                          : freelancer.badge === "Expert Vérifié"
-                          ? "bg-blue-100 text-blue-800"
-                          : "bg-orange-100 text-orange-800"
-                      }`}
-                    >
-                      {freelancer.badge}
-                    </span>
-                  </div>
-
-                  <button className="w-full bg-green-600 text-white py-3 rounded-lg hover:bg-green-700 transition-colors font-medium">
-                    Contacter
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Testimonials Enhanced */}
-      <section className="py-20 bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold text-gray-900 mb-4">
-              Ce Que Disent Nos Clients
-            </h2>
-            <p className="text-xl text-gray-600">
-              Des témoignages authentiques de projets réussis
-            </p>
-          </div>
-
-          <div className="relative max-w-6xl mx-auto">
-            <div className="bg-white p-10 rounded-2xl shadow-xl border">
-              <div className="grid md:grid-cols-2 gap-12 items-center">
-                <div>
-                  <div className="flex items-center mb-6">
-                    <img
-                      src={testimonials[currentTestimonial].avatar}
-                      alt={testimonials[currentTestimonial].clientName}
-                      className="w-16 h-16 rounded-full mr-4"
-                    />
-                    <div>
-                      <h4 className="font-bold text-gray-900 text-lg">
-                        {testimonials[currentTestimonial].clientName}
-                      </h4>
-                      <p className="text-gray-600">
-                        {testimonials[currentTestimonial].clientRole}
-                      </p>
-                      <p className="text-green-600 font-medium">
-                        {testimonials[currentTestimonial].clientCompany}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex mb-6">
-                    {[...Array(testimonials[currentTestimonial].rating)].map(
-                      (_, i) => (
-                        <Star
-                          key={i}
-                          className="h-6 w-6 text-yellow-400 fill-current"
-                        />
-                      )
-                    )}
-                  </div>
-
-                  <blockquote className="text-gray-700 text-lg leading-relaxed mb-6 italic">
-                    "{testimonials[currentTestimonial].comment}"
-                  </blockquote>
-                </div>
-
-                <div className="bg-gray-50 p-6 rounded-xl">
-                  <h5 className="font-bold text-gray-900 mb-4">
-                    Détails du Projet
-                  </h5>
-                  <div className="space-y-3">
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Type :</span>
-                      <span className="font-medium">
-                        {testimonials[currentTestimonial].projectType}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Budget :</span>
-                      <span className="font-medium">
-                        {testimonials[currentTestimonial].projectBudget}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Durée :</span>
-                      <span className="font-medium">
-                        {testimonials[currentTestimonial].completionTime}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
+      {/* Featured Freelancers */}
+      {featuredFreelancers.length > 0 && (
+        <section className="py-20">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="text-center mb-16">
+              <h2 className="text-4xl font-bold text-gray-900 mb-4">
+                Freelances d'Excellence
+              </h2>
+              <p className="text-xl text-gray-600">
+                Découvrez nos talents les mieux notés
+              </p>
             </div>
 
-            <button
-              className="absolute left-0 top-1/2 transform -translate-y-1/2 bg-white p-4 rounded-full shadow-lg hover:bg-gray-50 -ml-6"
-              onClick={() =>
-                setCurrentTestimonial(
-                  currentTestimonial === 0
-                    ? testimonials.length - 1
-                    : currentTestimonial - 1
-                )
-              }
-            >
-              <ChevronLeft className="h-6 w-6" />
-            </button>
-            <button
-              className="absolute right-0 top-1/2 transform -translate-y-1/2 bg-white p-4 rounded-full shadow-lg hover:bg-gray-50 -mr-6"
-              onClick={() =>
-                setCurrentTestimonial(
-                  currentTestimonial === testimonials.length - 1
-                    ? 0
-                    : currentTestimonial + 1
-                )
-              }
-            >
-              <ChevronRight className="h-6 w-6" />
-            </button>
-          </div>
-        </div>
-      </section>
+            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+              {featuredFreelancers.map((freelancer) => (
+                <a
+                  key={freelancer.id}
+                  href={`/Profil/?id=${freelancer.id}`}
+                  className="bg-white p-8 rounded-xl shadow-lg hover:shadow-xl transition-all border"
+                >
+                  <div className="text-center">
+                    <div className="relative mb-6">
+                      {freelancer.avatar ? (
+                        <img
+                          src={freelancer.avatar}
+                          alt={freelancer.name}
+                          className="w-24 h-24 rounded-full mx-auto object-cover"
+                        />
+                      ) : (
+                        <div className="w-24 h-24 rounded-full mx-auto bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center">
+                          <User className="w-12 h-12 text-white" />
+                        </div>
+                      )}
+                      {freelancer.verified && (
+                        <div className="absolute -bottom-2 -right-2 bg-green-500 p-2 rounded-full">
+                          <CheckCircle className="h-4 w-4 text-white" />
+                        </div>
+                      )}
+                    </div>
 
-      {/* CTA Section Premium */}
+                    <h3 className="font-bold text-gray-900 mb-1 text-lg">
+                      {freelancer.name}
+                    </h3>
+                    <p className="text-gray-600 text-sm mb-2">
+                      {freelancer.title}
+                    </p>
+                    <p className="text-gray-500 text-xs mb-4 flex items-center justify-center">
+                      <MapPin className="h-3 w-3 mr-1" />
+                      {freelancer.location}
+                    </p>
+
+                    <div className="flex items-center justify-center mb-4">
+                      <Star className="h-4 w-4 text-yellow-400 fill-current mr-1" />
+                      <span className="font-bold text-gray-900">
+                        {freelancer.rating}
+                      </span>
+                      <span className="text-gray-500 text-sm ml-1">
+                        ({freelancer.reviewCount})
+                      </span>
+                    </div>
+
+                    {freelancer.skills.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mb-4 justify-center">
+                        {freelancer.skills.map((skill) => (
+                          <span
+                            key={skill}
+                            className="bg-green-50 text-green-800 text-xs px-2 py-1 rounded border border-green-200"
+                          >
+                            {skill}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
+                    <div className="mb-4">
+                      <p className="text-2xl font-bold text-gray-900">
+                        ${freelancer.hourlyRate}/h
+                      </p>
+                      <p className="text-sm text-gray-500">
+                        {freelancer.completedProjects} services •{" "}
+                        {freelancer.responseTime}
+                      </p>
+                    </div>
+
+                    <button className="w-full bg-green-600 text-white py-3 rounded-lg hover:bg-green-700 transition-colors font-medium">
+                      Voir le profil
+                    </button>
+                  </div>
+                </a>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* CTA Section */}
       <section className="py-20 bg-gradient-to-r from-green-600 to-blue-600 text-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
@@ -1119,4 +1024,5 @@ const Accueil = () => {
     </div>
   );
 };
+
 export default Accueil;

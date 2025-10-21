@@ -60,7 +60,7 @@ export async function middleware(request) {
   console.log("🔍 Page:", path);
 
   // Chemins publics
-  const publicPaths = ['/', '/Authentification'];
+  const publicPaths = ['/', '/Authentification', '/ResultatRecherche'];
   if (publicPaths.includes(path)) {
     console.log("✅ Public");
     return response;
@@ -141,5 +141,5 @@ export async function middleware(request) {
 }
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)'],
+  matcher: ['/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)'],
 };

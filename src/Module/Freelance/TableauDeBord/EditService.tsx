@@ -62,13 +62,13 @@ interface VideoGuides {
 const EditService: React.FC = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const serviceId = searchParams.get("id");
+  const serviceId = searchParams.get("id")?.split("&")[0];
 
   const [currentStep, setCurrentStep] = useState<number>(1);
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [isLoadingService, setIsLoadingService] = useState<boolean>(true);
   const [isDataLoaded, setIsDataLoaded] = useState<boolean>(false);
-  const FREELANCE_ID = "3103d080-4199-4d68-801c-d60b7b5e82f9";
+  const FREELANCE_ID = searchParams.get("id")?.split("&")[1];
 
   const { getFreelanceById } = useFreelances();
   const {
@@ -155,12 +155,6 @@ const EditService: React.FC = () => {
 
         if (!service) {
           alert("⚠️ Service introuvable");
-          router.push("/TableauDeBord");
-          return;
-        }
-
-        if (service.freelance_id !== FREELANCE_ID) {
-          alert("⚠️ Vous n'êtes pas autorisé à modifier ce service");
           router.push("/TableauDeBord");
           return;
         }

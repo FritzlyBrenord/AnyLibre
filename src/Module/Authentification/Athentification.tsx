@@ -540,21 +540,6 @@ export default function AuthPage() {
                 </div>
               ))}
             </div>
-
-            <div className="grid grid-cols-3 gap-4 mt-8">
-              <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm">
-                <div className="text-2xl font-bold text-blue-600">50K+</div>
-                <div className="text-sm text-slate-600">Utilisateurs</div>
-              </div>
-              <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm">
-                <div className="text-2xl font-bold text-purple-600">100%</div>
-                <div className="text-sm text-slate-600">Sécurisé</div>
-              </div>
-              <div className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm">
-                <div className="text-2xl font-bold text-emerald-600">24/7</div>
-                <div className="text-sm text-slate-600">Support</div>
-              </div>
-            </div>
           </div>
         </div>
 

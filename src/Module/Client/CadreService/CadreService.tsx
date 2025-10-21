@@ -1,3 +1,4 @@
+import getDefaultServiceImage from "@/Component/Data/ImageDefault/ImageParDefaut";
 import {
   Pause,
   Play,
@@ -28,6 +29,7 @@ interface Service {
   title: string;
   description: string;
   category: string;
+  subcategory: string;
   price: number;
   rating: number;
   reviews: number;
@@ -69,13 +71,27 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
     }
 
     // Ajouter les images
+
     if (service.images && service.images.length > 0) {
       service.images.forEach((image: ServiceImage, index: number) => {
+        const imageUrl =
+          image.url && image.url.trim() !== ""
+            ? image.url
+            : getDefaultServiceImage(service.category, service.subcategory);
+
         mediaArray.push({
           type: "image",
-          url: image.url,
+          url: imageUrl,
           id: `image-${index}`,
         });
+      });
+    }
+
+    if (mediaArray.length === 0) {
+      mediaArray.push({
+        type: "image",
+        url: getDefaultServiceImage(service.category, service.subcategory),
+        id: "default-image",
       });
     }
 
@@ -182,7 +198,14 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
               <img
                 src={currentMedia.url}
                 alt={service.title}
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  target.src = getDefaultServiceImage(
+                    service.category,
+                    service.subcategory
+                  );
+                }}
               />
             )}
           </>

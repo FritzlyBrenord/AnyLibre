@@ -399,15 +399,16 @@ export const SignOut = async () => {
 export const getUser = async () => {
   const { data, error } = await supabaseLogin.auth.getUser();
 
-  if (error) {
-    console.error(
-      "Erreur lors de la recuperation de l'utilisateur:",
-      error.message
-    );
+  try {
+    if (!error) {
+      console.log("Utilisateur connecte", data);
+      return data;
+    } else {
+      return false;
+    }
+  } catch (err) {
+    console.error("Erreur lors de la recuperation de l'utilisateur:");
   }
-
-  console.log("Utilisateur connecte", data);
-  return data;
 };
 
 export const UtilisateurConnecter = async () => {
@@ -502,6 +503,8 @@ export const DeleteUserAdmin = async (userId: string) => {
 };
 export const CreerUtilisateur = async (email: string, password: string) => {
   try {
+    console.log("📤 Envoi requête création:", { email });
+
     const response = await fetch("/api/auth/create-user", {
       method: "POST",
       headers: {
@@ -512,14 +515,19 @@ export const CreerUtilisateur = async (email: string, password: string) => {
 
     const result = await response.json();
 
+    console.log("📥 Réponse reçue:", result);
+    console.log("📊 Status HTTP:", response.status);
+
     if (!result.success) {
-      console.error("Erreur création auth:", result.error);
+      console.error("❌ Erreur création auth:", result.error);
+      console.error("📋 Détails complets:", JSON.stringify(result, null, 2));
       return null;
     }
 
+    console.log("✅ Utilisateur créé, ID:", result.userId);
     return result.userId;
   } catch (err) {
-    console.error("Exception:", err);
+    console.error("💥 Exception lors de la création:", err);
     return null;
   }
 };

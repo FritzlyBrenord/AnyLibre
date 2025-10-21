@@ -14,8 +14,10 @@ import {
   DollarSign,
   ChevronDown,
   Briefcase,
+  Clock,
+  TrendingUp,
 } from "lucide-react";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/Context/ContextUser";
@@ -174,6 +176,12 @@ const HeaderAuth = () => {
   const [messagesMenuOpen, setMessagesMenuOpen] = useState(false);
   const [notificationsMenuOpen, setNotificationsMenuOpen] = useState(false);
 
+  // États pour la recherche
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showSearchSuggestions, setShowSearchSuggestions] = useState(false);
+  const [searchHistory, setSearchHistory] = useState<string[]>([]);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
   // Check if user is a freelancer when authentication changes
   useEffect(() => {
     if (isLoggedIn && currentSession.user?.id) {
@@ -183,6 +191,71 @@ const HeaderAuth = () => {
       setIsFreelancer(false);
     }
   }, [isLoggedIn, currentSession.user, getUserFreelance]);
+
+  // Charger l'historique de recherche depuis localStorage
+  useEffect(() => {
+    const savedHistory = localStorage.getItem("searchHistory");
+    if (savedHistory) {
+      try {
+        setSearchHistory(JSON.parse(savedHistory));
+      } catch (error) {
+        console.error(
+          "Erreur lors du chargement de l'historique de recherche:",
+          error
+        );
+        setSearchHistory([]);
+      }
+    }
+  }, []);
+
+  // Sauvegarder l'historique de recherche dans localStorage
+  const saveSearchToHistory = (query: string) => {
+    if (!query.trim()) return;
+
+    const updatedHistory = [
+      query.trim(),
+      ...searchHistory.filter(
+        (item) => item.toLowerCase() !== query.trim().toLowerCase()
+      ),
+    ].slice(0, 10); // Garder seulement les 10 plus récents
+
+    setSearchHistory(updatedHistory);
+    localStorage.setItem("searchHistory", JSON.stringify(updatedHistory));
+  };
+
+  // Gérer la recherche
+  const handleSearch = (query: string = searchQuery) => {
+    if (!query.trim()) return;
+
+    // Sauvegarder dans l'historique
+    saveSearchToHistory(query);
+
+    // Rediriger vers la page de recherche avec le terme
+    router.push(`/ResultatRecherche?q=${encodeURIComponent(query.trim())}`);
+    setShowSearchSuggestions(false);
+    setSearchQuery("");
+    setIsSearchOpen(false);
+  };
+
+  // Gérer la sélection d'un terme de l'historique
+  const handleHistorySelect = (query: string) => {
+    setSearchQuery(query);
+    handleSearch(query);
+  };
+
+  // Effacer l'historique de recherche
+  const clearSearchHistory = () => {
+    setSearchHistory([]);
+    localStorage.removeItem("searchHistory");
+  };
+
+  // Effacer un élément de l'historique
+  const removeSearchHistoryItem = (query: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const updatedHistory = searchHistory.filter((item) => item !== query);
+    setSearchHistory(updatedHistory);
+    localStorage.setItem("searchHistory", JSON.stringify(updatedHistory));
+  };
 
   // Vérifier l'authentification et rediriger si non connecté (pour les pages protégées)
   useEffect(() => {
@@ -213,6 +286,7 @@ const HeaderAuth = () => {
     if (menuToKeepOpen !== "profile") setProfileMenuOpen(false);
     if (menuToKeepOpen !== "messages") setMessagesMenuOpen(false);
     if (menuToKeepOpen !== "notifications") setNotificationsMenuOpen(false);
+    if (menuToKeepOpen !== "search") setShowSearchSuggestions(false);
   };
 
   const languages = [
@@ -323,6 +397,18 @@ const HeaderAuth = () => {
     );
   };
 
+  // Suggestions de recherche populaires
+  const popularSearches = [
+    "Développement web",
+    "Logo design",
+    "Marketing digital",
+    "Rédaction SEO",
+    "Montage vidéo",
+    "Application mobile",
+    "Design UI/UX",
+    "Community management",
+  ];
+
   return (
     <div className="mb-8">
       <header className="fixed top-0 left-0 right-0 bg-white shadow-sm z-50">
@@ -331,24 +417,136 @@ const HeaderAuth = () => {
           <div className="flex justify-between items-center h-20">
             {/* Logo */}
             <div className="flex items-center">
-              <div
-                className="text-2xl font-bold cursor-pointer"
-                onClick={() => router.push("/")}
-              >
-                <span className="text-green-600">Any</span>
-                <span className="text-gray-800">libre</span>
-              </div>
+              {!isLoggedIn ? (
+                <div
+                  className="text-2xl font-bold cursor-pointer"
+                  onClick={() => (window.location.href = "/")}
+                >
+                  <span className="text-green-600">Any</span>
+                  <span className="text-gray-800">libre</span>
+                </div>
+              ) : (
+                <div
+                  className="text-2xl font-bold cursor-pointer"
+                  onClick={() => (window.location.href = "/Accueil")}
+                >
+                  <span className="text-green-600">Any</span>
+                  <span className="text-gray-800">libre</span>
+                </div>
+              )}
             </div>
 
             {/* Search Bar - Desktop */}
             <div className="hidden md:flex flex-1 max-w-xl mx-8">
               <div className="w-full relative">
                 <input
+                  ref={searchInputRef}
                   type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onFocus={() => setShowSearchSuggestions(true)}
+                  onKeyPress={(e) => e.key === "Enter" && handleSearch()}
                   placeholder="Rechercher un service ou un freelance..."
                   className="w-full px-5 py-3 pl-12 border border-gray-200 rounded-full focus:ring-2 focus:ring-green-500 focus:border-transparent text-sm bg-gray-50 hover:bg-white transition-colors"
                 />
                 <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery("")}
+                    className="absolute right-12 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+
+                {/* Suggestions de recherche */}
+                {showSearchSuggestions && (
+                  <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-200 rounded-2xl shadow-xl z-50 max-h-96 overflow-y-auto">
+                    {/* Historique de recherche */}
+                    {searchHistory.length > 0 && (
+                      <div className="p-3 border-b border-gray-100">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <Clock className="h-4 w-4 text-gray-500" />
+                            <span className="text-sm font-medium text-gray-700">
+                              Historique
+                            </span>
+                          </div>
+                          <button
+                            onClick={clearSearchHistory}
+                            className="text-xs text-gray-500 hover:text-red-600 transition-colors"
+                          >
+                            Tout effacer
+                          </button>
+                        </div>
+                        <div className="space-y-1">
+                          {searchHistory.map((query, index) => (
+                            <button
+                              key={index}
+                              onClick={() => handleHistorySelect(query)}
+                              className="w-full text-left px-3 py-2 rounded-lg hover:bg-gray-50 flex items-center justify-between group"
+                            >
+                              <div className="flex items-center gap-3">
+                                <Clock className="h-4 w-4 text-gray-400" />
+                                <span className="text-sm text-gray-700">
+                                  {query}
+                                </span>
+                              </div>
+                              <button
+                                onClick={(e) =>
+                                  removeSearchHistoryItem(query, e)
+                                }
+                                className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 transition-opacity"
+                              >
+                                <X className="h-3 w-3" />
+                              </button>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Recherches populaires */}
+                    <div className="p-3">
+                      <div className="flex items-center gap-2 mb-2">
+                        <TrendingUp className="h-4 w-4 text-gray-500" />
+                        <span className="text-sm font-medium text-gray-700">
+                          Populaire
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {popularSearches.map((search, index) => (
+                          <button
+                            key={index}
+                            onClick={() => handleSearch(search)}
+                            className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-full text-xs transition-colors"
+                          >
+                            {search}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Action de recherche actuelle */}
+                    {searchQuery && (
+                      <div className="p-3 border-t border-gray-100 bg-gray-50">
+                        <button
+                          onClick={() => handleSearch()}
+                          className="w-full text-left px-3 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700 transition-colors flex items-center justify-between"
+                        >
+                          <div className="flex items-center gap-3">
+                            <Search className="h-4 w-4" />
+                            <span className="font-medium">
+                              Rechercher "{searchQuery}"
+                            </span>
+                          </div>
+                          <span className="text-sm">Entrée ↵</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
 
@@ -724,7 +922,10 @@ const HeaderAuth = () => {
               )}
 
               <button
-                onClick={() => setIsSearchOpen(!isSearchOpen)}
+                onClick={() => {
+                  setIsSearchOpen(!isSearchOpen);
+                  setShowSearchSuggestions(false);
+                }}
                 className="p-2 rounded-full hover:bg-gray-100 transition-colors"
               >
                 <Search className="h-5 w-5 text-gray-600" />
@@ -749,10 +950,111 @@ const HeaderAuth = () => {
               <div className="relative">
                 <input
                   type="text"
-                  placeholder="Rechercher..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onFocus={() => setShowSearchSuggestions(true)}
+                  onKeyPress={(e) => e.key === "Enter" && handleSearch()}
+                  placeholder="Rechercher un service ou un freelance..."
                   className="w-full px-5 py-3 pl-12 border border-gray-200 rounded-full focus:ring-2 focus:ring-green-500 focus:border-transparent bg-gray-50"
                 />
                 <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery("")}
+                    className="absolute right-12 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+
+                {/* Suggestions de recherche mobile */}
+                {showSearchSuggestions && (
+                  <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-200 rounded-2xl shadow-xl z-50 max-h-80 overflow-y-auto">
+                    {/* Historique de recherche */}
+                    {searchHistory.length > 0 && (
+                      <div className="p-3 border-b border-gray-100">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <Clock className="h-4 w-4 text-gray-500" />
+                            <span className="text-sm font-medium text-gray-700">
+                              Historique
+                            </span>
+                          </div>
+                          <button
+                            onClick={clearSearchHistory}
+                            className="text-xs text-gray-500 hover:text-red-600 transition-colors"
+                          >
+                            Tout effacer
+                          </button>
+                        </div>
+                        <div className="space-y-1">
+                          {searchHistory.map((query, index) => (
+                            <button
+                              key={index}
+                              onClick={() => handleHistorySelect(query)}
+                              className="w-full text-left px-3 py-2 rounded-lg hover:bg-gray-50 flex items-center justify-between group"
+                            >
+                              <div className="flex items-center gap-3">
+                                <Clock className="h-4 w-4 text-gray-400" />
+                                <span className="text-sm text-gray-700">
+                                  {query}
+                                </span>
+                              </div>
+                              <button
+                                onClick={(e) =>
+                                  removeSearchHistoryItem(query, e)
+                                }
+                                className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-500 transition-opacity"
+                              >
+                                <X className="h-3 w-3" />
+                              </button>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Recherches populaires */}
+                    <div className="p-3">
+                      <div className="flex items-center gap-2 mb-2">
+                        <TrendingUp className="h-4 w-4 text-gray-500" />
+                        <span className="text-sm font-medium text-gray-700">
+                          Populaire
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {popularSearches.map((search, index) => (
+                          <button
+                            key={index}
+                            onClick={() => handleSearch(search)}
+                            className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-full text-xs transition-colors"
+                          >
+                            {search}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Action de recherche actuelle */}
+                    {searchQuery && (
+                      <div className="p-3 border-t border-gray-100 bg-gray-50">
+                        <button
+                          onClick={() => handleSearch()}
+                          className="w-full text-left px-3 py-2 rounded-lg bg-green-600 text-white hover:bg-green-700 transition-colors flex items-center justify-between"
+                        >
+                          <div className="flex items-center gap-3">
+                            <Search className="h-4 w-4" />
+                            <span className="font-medium">
+                              Rechercher "{searchQuery}"
+                            </span>
+                          </div>
+                          <span className="text-sm">Entrée ↵</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           )}

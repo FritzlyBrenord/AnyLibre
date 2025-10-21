@@ -8,19 +8,20 @@ import {
   Heart,
   Play,
   Pause,
-  CheckCircle2,
-  Award,
+  Filter,
+  X,
   Sparkles,
   Users,
   Zap,
+  TrendingUp,
 } from "lucide-react";
 import { useFreelances } from "@/Context/Freelance/FreelanceContext";
 import { useServices } from "@/Context/Freelance/ContextService";
 import { useAuth } from "@/Context/ContextUser";
 import { useRouter } from "next/router";
-import { redirect } from "next/navigation";
+import getDefaultServiceImage from "@/Component/Data/ImageDefault/ImageParDefaut";
 
-// Types définis
+// Types
 interface ServiceImage {
   id: string;
   name: string;
@@ -42,6 +43,7 @@ interface Service {
   title: string;
   description: string;
   category: string;
+  subcategory: string;
   price: number;
   rating: number;
   reviews: number;
@@ -61,23 +63,209 @@ interface ServiceCardProps {
 
 interface CarouselProps {
   title: string;
-  subtitle?: string;
   services: Service[];
   onSeeAll: () => void;
+  maxItems?: number;
 }
 
-const categories = [
-  "Développement Web",
-  "Design Graphique",
-  "Montage Vidéo",
-  "Marketing Digital",
-  "Rédaction",
-  "Animation",
-  "SEO",
-  "Mobile Apps",
+const heroImages = [
+  "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?w=800&h=600&fit=crop", // Équipe qui travaille
+  "https://images.unsplash.com/photo-1531545514256-b1400bc00f31?w=800&h=600&fit=crop", // Freelance sur ordinateur
+  "https://images.unsplash.com/photo-1542744173-8e7e53415bb0?w=800&h=600&fit=crop", // Business meeting
+  "https://images.unsplash.com/photo-1553877522-43269d4ea984?w=800&h=600&fit=crop", // Design work
+  "https://images.unsplash.com/photo-1559136555-9303baea8ebd?w=800&h=600&fit=crop", // Creative workspace
 ];
 
-// Composant Card de Service amélioré
+interface HeroSectionProps {
+  userName: string;
+  servicesCount: number;
+}
+
+const HeroSection: React.FC<HeroSectionProps> = ({
+  userName,
+  servicesCount,
+}) => {
+  const [currentImage, setCurrentImage] = useState<string>("");
+  const [isImageLoaded, setIsImageLoaded] = useState(false);
+
+  useEffect(() => {
+    // Sélectionner une image aléatoire à chaque chargement
+    const randomIndex = Math.floor(Math.random() * heroImages.length);
+    setCurrentImage(heroImages[randomIndex]);
+    setIsImageLoaded(false);
+  }, []);
+
+  return (
+    <section className="relative bg-gradient-to-r from-yellow-100 to-white overflow-hidden">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+          {/* Colonne gauche - Texte */}
+          <div className="space-y-6 animate-fade-in-up">
+            <h1 className="text-4xl md:text-5xl font-bold text-gray-900 leading-tight mt-5">
+              Bienvenue,{" "}
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-500 to-orange-500 animate-gradient">
+                {userName}
+              </span>{" "}
+              👋
+            </h1>
+
+            <p className="text-xl text-gray-700 leading-relaxed">
+              Découvrez{" "}
+              <span className="font-bold text-gray-900">{servicesCount}</span>{" "}
+              services exceptionnels pour donner vie à vos projets
+            </p>
+
+            {/* Stats rapides */}
+            <div className="grid grid-cols-3 gap-4 pt-4">
+              <div className="text-center p-3 bg-white/60 backdrop-blur-sm rounded-lg shadow-sm hover:shadow-md transition-shadow">
+                <div className="flex items-center justify-center mb-1">
+                  <Users className="w-5 h-5 text-blue-600" />
+                </div>
+                <div className="text-2xl font-bold text-gray-900">
+                  {servicesCount}+
+                </div>
+                <div className="text-xs text-gray-600">Services</div>
+              </div>
+
+              <div className="text-center p-3 bg-white/60 backdrop-blur-sm rounded-lg shadow-sm hover:shadow-md transition-shadow">
+                <div className="flex items-center justify-center mb-1">
+                  <Zap className="w-5 h-5 text-yellow-600" />
+                </div>
+                <div className="text-2xl font-bold text-gray-900">24h</div>
+                <div className="text-xs text-gray-600">Réponse</div>
+              </div>
+
+              <div className="text-center p-3 bg-white/60 backdrop-blur-sm rounded-lg shadow-sm hover:shadow-md transition-shadow">
+                <div className="flex items-center justify-center mb-1">
+                  <TrendingUp className="w-5 h-5 text-green-600" />
+                </div>
+                <div className="text-2xl font-bold text-gray-900">4.9</div>
+                <div className="text-xs text-gray-600">Note moy.</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Colonne droite - Image avec animations */}
+          <div className="relative lg:block hidden">
+            <div className="relative">
+              {/* Cercles décoratifs animés */}
+              <div className="absolute -top-4 -left-4 w-72 h-72 bg-yellow-200 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob"></div>
+              <div className="absolute -bottom-8 -right-4 w-72 h-72 bg-orange-200 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-2000"></div>
+              <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-72 h-72 bg-pink-300 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-4000"></div>
+
+              {/* Image principale */}
+              <div className="relative rounded-2xl overflow-hidden shadow-2xl">
+                <div
+                  className={`transition-opacity duration-700 ${
+                    isImageLoaded ? "opacity-100" : "opacity-0"
+                  }`}
+                >
+                  <img
+                    src={currentImage}
+                    alt="Services Anylibre"
+                    className="w-full h-[300px] object-cover rounded-2xl"
+                    onLoad={() => setIsImageLoaded(true)}
+                  />
+                </div>
+
+                {/* Overlay avec gradient */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent rounded-2xl"></div>
+
+                {/* Badge flottant */}
+                <div className="absolute bottom-6 left-6 bg-white/95 backdrop-blur-sm px-4 py-3 rounded-xl shadow-lg animate-bounce-slow">
+                  <div className="flex items-center gap-3">
+                    <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+                    <div>
+                      <div className="text-sm font-bold text-gray-900">
+                        En ligne maintenant
+                      </div>
+                      <div className="text-xs text-gray-600">
+                        250+ freelances disponibles
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Styles CSS pour les animations */}
+      <style jsx>{`
+        @keyframes fade-in-up {
+          from {
+            opacity: 0;
+            transform: translateY(20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        @keyframes blob {
+          0%,
+          100% {
+            transform: translate(0, 0) scale(1);
+          }
+          33% {
+            transform: translate(30px, -50px) scale(1.1);
+          }
+          66% {
+            transform: translate(-20px, 20px) scale(0.9);
+          }
+        }
+
+        @keyframes gradient {
+          0%,
+          100% {
+            background-position: 0% 50%;
+          }
+          50% {
+            background-position: 100% 50%;
+          }
+        }
+
+        @keyframes bounce-slow {
+          0%,
+          100% {
+            transform: translateY(0);
+          }
+          50% {
+            transform: translateY(-10px);
+          }
+        }
+
+        .animate-fade-in-up {
+          animation: fade-in-up 0.8s ease-out;
+        }
+
+        .animate-blob {
+          animation: blob 7s infinite;
+        }
+
+        .animation-delay-2000 {
+          animation-delay: 2s;
+        }
+
+        .animation-delay-4000 {
+          animation-delay: 4s;
+        }
+
+        .animate-gradient {
+          background-size: 200% 200%;
+          animation: gradient 3s ease infinite;
+        }
+
+        .animate-bounce-slow {
+          animation: bounce-slow 3s ease-in-out infinite;
+        }
+      `}</style>
+    </section>
+  );
+};
+// Composant ServiceCard simplifié
 const ServiceCard: React.FC<ServiceCardProps> = ({
   service,
   onFavorite,
@@ -86,15 +274,12 @@ const ServiceCard: React.FC<ServiceCardProps> = ({
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [isHovered, setIsHovered] = useState<boolean>(false);
   const [currentMediaIndex, setCurrentMediaIndex] = useState<number>(0);
-  const [showVideo, setShowVideo] = useState<boolean>(true);
   const videoRef = useRef<HTMLVideoElement>(null);
 
-  // Préparer les médias: vidéo en premier si disponible, puis images
   const medias = React.useMemo(() => {
     const mediaArray: Array<{ type: string; url: string; id: string }> = [];
 
-    // Ajouter la vidéo en premier si disponible
-    if (service.video_url) {
+    if (service.video_url && service.video_url.trim() !== "") {
       mediaArray.push({
         type: "video",
         url: service.video_url,
@@ -102,250 +287,135 @@ const ServiceCard: React.FC<ServiceCardProps> = ({
       });
     }
 
-    // Ajouter les images
     if (service.images && service.images.length > 0) {
       service.images.forEach((image: ServiceImage, index: number) => {
+        const imageUrl =
+          image.url && image.url.trim() !== ""
+            ? image.url
+            : getDefaultServiceImage(service.category, service.subcategory);
+
         mediaArray.push({
           type: "image",
-          url: image.url,
+          url: imageUrl,
           id: `image-${index}`,
         });
       });
     }
 
-    return mediaArray;
-  }, [service.video_url, service.images]);
-
-  const totalMedias = medias.length;
-
-  // Gérer la lecture/pause de la vidéo
-  useEffect(() => {
-    if (videoRef.current) {
-      if (
-        isPlaying &&
-        showVideo &&
-        currentMediaIndex === 0 &&
-        service.video_url
-      ) {
-        videoRef.current.play().catch(console.error);
-      } else {
-        videoRef.current.pause();
-      }
+    if (mediaArray.length === 0) {
+      mediaArray.push({
+        type: "image",
+        url: getDefaultServiceImage(service.category, service.subcategory),
+        id: "default-image",
+      });
     }
-  }, [isPlaying, showVideo, currentMediaIndex, service.video_url]);
+
+    return mediaArray;
+  }, [
+    service.video_url,
+    service.images,
+    service.category,
+    service.subcategory,
+  ]);
+
+  const currentMedia = medias[currentMediaIndex];
+  const isVideo = currentMedia?.type === "video";
 
   const nextMedia = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (currentMediaIndex === 0 && service.video_url && isPlaying) {
-      setIsPlaying(false);
-    }
-    setCurrentMediaIndex((prev) => (prev + 1) % totalMedias);
-    // Si on passe à une image après la vidéo, désactiver le mode vidéo
-    if (currentMediaIndex === 0 && service.video_url) {
-      setShowVideo(false);
-    }
+    setCurrentMediaIndex((prev) => (prev + 1) % medias.length);
   };
 
   const prevMedia = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (currentMediaIndex === 0 && service.video_url && isPlaying) {
-      setIsPlaying(false);
-    }
-    setCurrentMediaIndex((prev) => (prev - 1 + totalMedias) % totalMedias);
-    // Si on revient à la vidéo, réactiver le mode vidéo
-    if (
-      (currentMediaIndex - 1 + totalMedias) % totalMedias === 0 &&
-      service.video_url
-    ) {
-      setShowVideo(true);
-    }
+    setCurrentMediaIndex((prev) => (prev - 1 + medias.length) % medias.length);
   };
-
-  const togglePlay = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (currentMediaIndex === 0 && service.video_url) {
-      setIsPlaying(!isPlaying);
-      setShowVideo(true);
-    }
-  };
-
-  const switchToImages = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setShowVideo(false);
-    setIsPlaying(false);
-    // Si on est sur la vidéo, passer à la première image
-    if (currentMediaIndex === 0 && service.video_url && medias.length > 1) {
-      setCurrentMediaIndex(1);
-    }
-  };
-
-  const switchToVideo = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setShowVideo(true);
-    setCurrentMediaIndex(0);
-  };
-
-  const currentMedia = medias[currentMediaIndex];
-  const isVideo = currentMedia?.type === "video" && showVideo;
-  const hasMultipleMedias = totalMedias > 1;
 
   return (
     <div
-      className="group bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 cursor-pointer border border-gray-100"
+      className="group bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-lg transition-all duration-300 cursor-pointer border border-gray-200"
       onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => {
-        setIsHovered(false);
-        setIsPlaying(false);
-      }}
+      onMouseLeave={() => setIsHovered(false)}
     >
-      {/* Carousel Image/Vidéo amélioré */}
+      {/* Image/Vidéo */}
       <div className="relative aspect-video overflow-hidden bg-gray-100">
-        {currentMedia && (
-          <>
-            {isVideo ? (
-              <video
-                ref={videoRef}
-                src={currentMedia.url}
-                className="w-full h-full object-cover"
-                muted
-                loop
-                playsInline
-                onClick={togglePlay}
-              />
-            ) : (
-              <img
-                src={currentMedia.url}
-                alt={service.title}
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-              />
-            )}
-          </>
+        {isVideo ? (
+          <video
+            ref={videoRef}
+            src={currentMedia.url}
+            className="w-full h-full object-cover"
+            muted
+            loop
+            playsInline
+          />
+        ) : (
+          <img
+            src={currentMedia.url}
+            alt={service.title}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+            onError={(e) => {
+              const target = e.target as HTMLImageElement;
+              target.src = getDefaultServiceImage(
+                service.category,
+                service.subcategory
+              );
+            }}
+          />
         )}
 
-        {/* Overlay de contrôle vidéo */}
-        {isVideo && isHovered && (
-          <div
-            className="absolute inset-0 bg-black/40 flex items-center justify-center transition-opacity duration-300"
-            onClick={togglePlay}
-          >
-            <button className="w-16 h-16 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center hover:scale-110 transition-transform shadow-lg">
-              {isPlaying ? (
-                <Pause className="w-6 h-6 text-gray-900" />
-              ) : (
-                <Play className="w-6 h-6 text-gray-900 ml-1" />
-              )}
-            </button>
-          </div>
-        )}
-
-        {/* Boutons de navigation carousel - visible au hover */}
-        {hasMultipleMedias && isHovered && (
+        {/* Navigation */}
+        {medias.length > 1 && isHovered && (
           <>
             <button
               onClick={prevMedia}
-              className="absolute left-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-white transition-colors shadow-md z-10"
+              className="absolute left-2 top-1/2 -translate-y-1/2 w-7 h-7 bg-white/90 rounded-full flex items-center justify-center shadow-md hover:bg-white z-10"
             >
-              <ChevronLeft className="w-5 h-5 text-gray-900" />
+              <ChevronLeft className="w-4 h-4" />
             </button>
             <button
               onClick={nextMedia}
-              className="absolute right-2 top-1/2 -translate-y-1/2 w-8 h-8 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-white transition-colors shadow-md z-10"
+              className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 bg-white/90 rounded-full flex items-center justify-center shadow-md hover:bg-white z-10"
             >
-              <ChevronRight className="w-5 h-5 text-gray-900" />
+              <ChevronRight className="w-4 h-4" />
             </button>
           </>
         )}
 
-        {/* Indicateurs de carousel */}
-        {hasMultipleMedias && (
-          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1 z-10">
-            {medias.map((_, index: number) => (
-              <button
+        {/* Indicateurs */}
+        {medias.length > 1 && (
+          <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1">
+            {medias.map((_, index) => (
+              <div
                 key={index}
-                onClick={(e: React.MouseEvent) => {
-                  e.stopPropagation();
-                  if (
-                    currentMediaIndex === 0 &&
-                    service.video_url &&
-                    isPlaying
-                  ) {
-                    setIsPlaying(false);
-                  }
-                  setCurrentMediaIndex(index);
-                  if (index === 0 && service.video_url) {
-                    setShowVideo(true);
-                  } else if (index > 0 && service.video_url) {
-                    setShowVideo(false);
-                  }
-                }}
-                className={`w-1.5 h-1.5 rounded-full transition-all ${
-                  index === currentMediaIndex
-                    ? "bg-white w-4"
-                    : "bg-white/50 hover:bg-white/80"
+                className={`w-1.5 h-1.5 rounded-full ${
+                  index === currentMediaIndex ? "bg-white w-3" : "bg-white/50"
                 }`}
               />
             ))}
           </div>
         )}
 
-        {/* Boutons de switch vidéo/images */}
-        {service.video_url &&
-          service.images &&
-          service.images.length > 0 &&
-          isHovered && (
-            <div className="absolute top-3 left-3 flex gap-2 z-10">
-              <button
-                onClick={switchToVideo}
-                className={`px-2 py-1 text-xs rounded-full backdrop-blur-sm transition-all ${
-                  showVideo
-                    ? "bg-blue-500 text-white"
-                    : "bg-white/90 text-gray-700 hover:bg-white"
-                }`}
-              >
-                Vidéo
-              </button>
-              <button
-                onClick={switchToImages}
-                className={`px-2 py-1 text-xs rounded-full backdrop-blur-sm transition-all ${
-                  !showVideo
-                    ? "bg-blue-500 text-white"
-                    : "bg-white/90 text-gray-700 hover:bg-white"
-                }`}
-              >
-                Images
-              </button>
-            </div>
-          )}
-
         {/* Bouton favori */}
         <button
-          onClick={(e: React.MouseEvent) => {
+          onClick={(e) => {
             e.stopPropagation();
             onFavorite(service.id);
           }}
-          className="absolute top-3 right-3 w-9 h-9 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-white transition-colors shadow-md z-10"
+          className="absolute top-2 right-2 w-8 h-8 bg-white/90 rounded-full flex items-center justify-center hover:bg-white shadow-md z-10"
         >
           <Heart
-            className={`w-5 h-5 ${
+            className={`w-4 h-4 ${
               isFavorited ? "fill-red-500 text-red-500" : "text-gray-700"
             }`}
           />
         </button>
-
-        {/* Badge online */}
-        {service.seller.isOnline && (
-          <div className="absolute top-3 left-3 px-2 py-1 bg-white/90 backdrop-blur-sm rounded-full text-xs font-medium text-green-600 flex items-center gap-1 z-10">
-            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-            En ligne
-          </div>
-        )}
       </div>
 
       {/* Contenu */}
-      <div className="p-4">
-        {/* Vendeur avec photo réelle */}
-        <div className="flex items-center gap-2 mb-3">
-          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white font-bold text-sm overflow-hidden">
+      <div className="p-3">
+        {/* Vendeur */}
+        <div className="flex items-center gap-2 mb-2">
+          <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center text-xs font-bold text-blue-600 overflow-hidden">
             {service.seller.photo_url ? (
               <img
                 src={service.seller.photo_url}
@@ -356,68 +426,34 @@ const ServiceCard: React.FC<ServiceCardProps> = ({
               service.seller.name.charAt(0).toUpperCase()
             )}
           </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2">
-              <a
-                href={`/Profil/?id=${service.freelance_id}`}
-                className="text-sm hover:underline font-semibold text-gray-900 truncate"
-              >
-                {service.seller.name}
-              </a>
-              {service.seller.isTopRated && (
-                <span className="px-2 py-0.5 bg-orange-100 text-orange-700 text-xs font-bold rounded flex items-center gap-1">
-                  <Star className="w-3 h-3 fill-current" />
-                  Top
-                </span>
-              )}
-            </div>
-            <span className="text-xs text-gray-500">
-              {service.seller.level}
-            </span>
-          </div>
+          <a
+            href={`/Profil/?id=${service.freelance_id}`}
+            className="text-xs font-semibold text-gray-900 hover:underline truncate"
+          >
+            {service.seller.name}
+          </a>
         </div>
 
         {/* Titre */}
         <a
           href={`/DetailService/?id=${service.id}`}
-          className="text-sm font-medium text-gray-900 mb-3 line-clamp-2 group-hover:text-blue-600 transition-colors"
+          className="text-sm font-medium text-gray-900 line-clamp-2 hover:text-blue-600 transition-colors mb-2 block"
         >
           {service.title}
         </a>
 
-        {/* Badges */}
-        {service.badges.length > 0 && (
-          <div className="flex flex-wrap gap-1 mb-3">
-            {service.badges.map((badge: string, index: number) => (
-              <span
-                key={index}
-                className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded"
-              >
-                {badge}
-              </span>
-            ))}
-          </div>
-        )}
-
         {/* Note et Prix */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between mt-2">
           <div className="flex items-center gap-1">
-            <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-            <span className="text-sm font-bold text-gray-900">
+            <Star className="w-3.5 h-3.5 fill-yellow-400 text-yellow-400" />
+            <span className="text-xs font-bold text-gray-900">
               {service.rating}
             </span>
-            <span className="text-sm text-gray-500">
-              (
-              {service.reviews > 1000
-                ? `${Math.floor(service.reviews / 1000)}k+`
-                : service.reviews}
-              )
-            </span>
+            <span className="text-xs text-gray-500">({service.reviews})</span>
           </div>
           <div className="text-right">
-            <div className="text-xs text-gray-500">À partir de</div>
-            <div className="text-lg font-bold text-gray-900">
-              {service.price} $US
+            <div className="text-sm font-bold text-gray-900">
+              ${service.price}
             </div>
           </div>
         </div>
@@ -426,32 +462,15 @@ const ServiceCard: React.FC<ServiceCardProps> = ({
   );
 };
 
-// Composant Carousel amélioré
+// Composant Carousel
 const Carousel: React.FC<CarouselProps> = ({
   title,
-  subtitle,
   services,
   onSeeAll,
+  maxItems = 8,
 }) => {
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const [currentGroup, setCurrentGroup] = useState<number>(0);
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
-  const itemsPerGroup = 4;
-
-  // Calculer les groupes de services
-  const totalGroups = Math.ceil(services.length / itemsPerGroup);
-  const currentServices = services.slice(
-    currentGroup * itemsPerGroup,
-    (currentGroup + 1) * itemsPerGroup
-  );
-
-  const nextGroup = () => {
-    setCurrentGroup((prev) => (prev + 1) % totalGroups);
-  };
-
-  const prevGroup = () => {
-    setCurrentGroup((prev) => (prev - 1 + totalGroups) % totalGroups);
-  };
+  const displayServices = services.slice(0, maxItems);
 
   const toggleFavorite = (serviceId: string) => {
     setFavorites((prev) => {
@@ -465,106 +484,52 @@ const Carousel: React.FC<CarouselProps> = ({
     });
   };
 
+  if (displayServices.length === 0) return null;
+
   return (
-    <div className="mb-12">
+    <div className="mb-10">
       {/* En-tête */}
-      <div className="flex items-end justify-between mb-6">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-1">{title}</h2>
-          {subtitle && <p className="text-gray-600">{subtitle}</p>}
-        </div>
-        <div className="flex items-center gap-4">
-          {/* Indicateur de pagination */}
-          {totalGroups > 1 && (
-            <div className="flex items-center gap-2 text-sm text-gray-600">
-              <span>
-                Groupe {currentGroup + 1} sur {totalGroups}
-              </span>
-            </div>
-          )}
-          {onSeeAll && (
-            <button
-              onClick={onSeeAll}
-              className="text-blue-600 hover:text-blue-700 font-semibold flex items-center gap-1 group"
-            >
-              Tout afficher
-              <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-            </button>
-          )}
-        </div>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-xl font-bold text-gray-900">{title}</h2>
+        <button
+          onClick={onSeeAll}
+          className="text-blue-600 hover:text-blue-700 font-medium text-sm flex items-center gap-1"
+        >
+          Voir tout
+          <ChevronRight className="w-4 h-4" />
+        </button>
       </div>
 
-      {/* Carousel avec navigation */}
-      <div className="relative">
-        {/* Bouton précédent */}
-        {totalGroups > 1 && currentGroup > 0 && (
-          <button
-            onClick={prevGroup}
-            className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 z-10 w-12 h-12 bg-white rounded-full shadow-lg flex items-center justify-center hover:bg-gray-50 transition-colors"
-          >
-            <ChevronLeft className="w-6 h-6 text-gray-700" />
-          </button>
-        )}
-
-        {/* Grille des services */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
-          {currentServices.map((service: Service) => (
-            <ServiceCard
-              key={service.id}
-              service={service}
-              onFavorite={toggleFavorite}
-              isFavorited={favorites.has(service.id)}
-            />
-          ))}
-        </div>
-
-        {/* Bouton suivant */}
-        {totalGroups > 1 && currentGroup < totalGroups - 1 && (
-          <button
-            onClick={nextGroup}
-            className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 z-10 w-12 h-12 bg-white rounded-full shadow-lg flex items-center justify-center hover:bg-gray-50 transition-colors"
-          >
-            <ChevronRight className="w-6 h-6 text-gray-700" />
-          </button>
-        )}
+      {/* Grille de services */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-4 gap-4">
+        {displayServices.map((service) => (
+          <ServiceCard
+            key={service.id}
+            service={service}
+            onFavorite={toggleFavorite}
+            isFavorited={favorites.has(service.id)}
+          />
+        ))}
       </div>
-
-      {/* Indicateurs de groupe */}
-      {totalGroups > 1 && (
-        <div className="flex justify-center gap-2 mt-6">
-          {Array.from({ length: totalGroups }, (_, index: number) => (
-            <button
-              key={index}
-              onClick={() => setCurrentGroup(index)}
-              className={`w-3 h-3 rounded-full transition-all ${
-                index === currentGroup
-                  ? "bg-blue-600 w-6"
-                  : "bg-gray-300 hover:bg-gray-400"
-              }`}
-            />
-          ))}
-        </div>
-      )}
     </div>
   );
 };
 
-// Composant principal
+// Page principale
 export default function HomePage() {
-  const [searchTerm, setSearchTerm] = useState<string>("");
+  const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [priceFilter, setPriceFilter] = useState<string>("all");
+  const [showFilters, setShowFilters] = useState<boolean>(false);
 
   const { services, isLoading, error } = useServices();
   const { freelances, getPhotoProfileUrl } = useFreelances();
   const { currentSession } = useAuth();
-  const isLoggedIn =
-    currentSession.isAuthenticated && currentSession.userProfile;
-  // Récupérer le nom de l'utilisateur connecté
+
   const userName = currentSession.userProfile?.nom_utilisateur || "Utilisateur";
 
-  // Transformer les données du contexte pour correspondre à l'interface
+  // Transformer les services
   const transformedServices = React.useMemo(() => {
     return services.map((service: any) => {
-      // Trouver le freelance correspondant
       const freelance = freelances.find(
         (f: any) => f.id === service.freelance_id
       );
@@ -574,207 +539,293 @@ export default function HomePage() {
         title: service.title,
         description: service.description,
         category: service.category,
+        subcategory: service.subcategory,
         price: service.packages?.[0]?.price
           ? parseFloat(service.packages[0].price)
           : 0,
-        rating: 4.8, // Valeur par défaut, à adapter selon vos besoins
-        reviews: Math.floor(Math.random() * 1000) + 100, // Valeur par défaut
+        rating: 4.8,
+        reviews: Math.floor(Math.random() * 500) + 50,
         images: service.images || [],
         video_url: service.video_url,
-        hasVideo: !!service.video_url,
         freelance_id: service.freelance_id,
         seller: {
           name: freelance ? `${freelance.prenom} ${freelance.nom}` : "Anonyme",
-          level: "Level 2", // À adapter selon votre logique
-          isTopRated: Math.random() > 0.5, // À adapter
-          isOnline: Math.random() > 0.3, // À adapter
+          level: "Level 2",
+          isTopRated: Math.random() > 0.5,
+          isOnline: Math.random() > 0.5,
           photo_url: freelance?.photo_url
             ? getPhotoProfileUrl(freelance?.photo_url)
             : "",
         },
-        badges: service.tags?.slice(0, 2) || [], // Utiliser les tags comme badges
+        badges: service.tags?.slice(0, 2) || [],
       };
     });
   }, [services, freelances, getPhotoProfileUrl]);
+
+  // Obtenir les catégories avec services
+  const categoriesWithServices = React.useMemo(() => {
+    const categoryMap = new Map<string, number>();
+    transformedServices.forEach((service: Service) => {
+      const count = categoryMap.get(service.category) || 0;
+      categoryMap.set(service.category, count + 1);
+    });
+
+    return Array.from(categoryMap.entries())
+      .filter(([_, count]) => count > 0)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([category, count]) => ({ category, count }));
+  }, [transformedServices]);
+
+  // Filtrer les services
+  const filteredServices = React.useMemo(() => {
+    let filtered = transformedServices;
+
+    // Filtre par catégorie
+    if (selectedCategory !== "all") {
+      filtered = filtered.filter(
+        (s: Service) => s.category === selectedCategory
+      );
+    }
+
+    // Filtre par prix
+    if (priceFilter === "low") {
+      filtered = filtered.filter((s: Service) => s.price < 500);
+    } else if (priceFilter === "medium") {
+      filtered = filtered.filter(
+        (s: Service) => s.price >= 500 && s.price < 1500
+      );
+    } else if (priceFilter === "high") {
+      filtered = filtered.filter((s: Service) => s.price >= 1500);
+    }
+
+    return filtered;
+  }, [transformedServices, selectedCategory, priceFilter]);
+
+  // Services par catégorie (pour les sections)
+  const servicesByCategory = React.useMemo(() => {
+    const map = new Map<string, Service[]>();
+    categoriesWithServices.forEach(({ category }) => {
+      const categoryServices = transformedServices.filter(
+        (s: Service) => s.category === category
+      );
+      map.set(category, categoryServices);
+    });
+    return map;
+  }, [transformedServices, categoriesWithServices]);
+
+  // Recommandations (8 services max)
+  const recommendedServices = transformedServices.slice(0, 8);
+
+  // Services par prix
+  const budgetFriendlyServices = transformedServices
+    .filter((s: Service) => s.price < 500)
+    .slice(0, 8);
+
+  const premiumServices = transformedServices
+    .filter((s: Service) => s.price >= 1500)
+    .slice(0, 8);
+
+  const handleSeeAll = (category?: string) => {
+    if (category) {
+      setSelectedCategory(category);
+      setShowFilters(true);
+    }
+    // Scroll vers les filtres
+    window.scrollTo({ top: 500, behavior: "smooth" });
+  };
 
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Chargement des services...</p>
+          <p className="mt-4 text-gray-600">Chargement...</p>
         </div>
       </div>
     );
   }
-
-  if (error) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center text-red-600">
-          <p>Erreur: {error}</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Filtrer les services par catégorie
-  const developmentServices = transformedServices.filter(
-    (s: Service) =>
-      s.category.toLowerCase().includes("développement") ||
-      s.category.toLowerCase().includes("development")
-  );
-
-  const videoServices = transformedServices.filter(
-    (s: Service) =>
-      s.category.toLowerCase().includes("vidéo") ||
-      s.category.toLowerCase().includes("video")
-  );
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Hero Banner */}
-      <section className="bg-gradient-to-br from-yellow-50 via-white to-blue-50 relative overflow-hidden">
-        <div className="max-w-8xl mx-auto px-4 sm:px-6 lg:px-20 py-16">
-          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-8">
-            <div className="max-w-2xl">
-              <h1 className="text-3xl md:text-4xl font-bold mb-4 leading-tight text-gray-900">
-                Bon retour, <span className="text-blue-600">{userName}</span> 👋
-              </h1>
+      {/* Hero simple */}
+      <HeroSection
+        userName={userName}
+        servicesCount={transformedServices.length}
+      />
 
-              <p className="text-xl text-gray-700 mb-8 leading-relaxed">
-                Trouvez le talent parfait parmi nos
-                <span className="font-semibold text-gray-900">
-                  {" "}
-                  {freelances.length}+ freelances vérifiés
-                </span>
-                pour concrétiser vos projets.
-              </p>
-
-              <div className="flex flex-col sm:flex-row gap-4">
-                <button className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-all duration-200 shadow-md flex items-center gap-2">
-                  <Search className="w-5 h-5" />
-                  Trouver un expert
-                </button>
-                <button className="border border-gray-300 hover:border-gray-400 text-gray-700 px-6 py-3 rounded-lg font-medium transition-all duration-200 hover:bg-gray-50 flex items-center gap-2">
-                  <Users className="w-5 h-5" />
-                  Voir mes missions
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Recommandations */}
-      <section className="max-w-8xl mx-auto px-4 sm:px-6 lg:px-20 py-16">
-        {/* Basé sur vos recherches */}
-        {transformedServices.length > 0 && (
-          <Carousel
-            title="Services recommandés"
-            services={transformedServices.slice(0, 10)}
-            onSeeAll={() => console.log("Voir tout")}
-          />
-        )}
-
-        {/* Services Pro vérifiés en Développement */}
-        {developmentServices.length > 0 && (
-          <Carousel
-            title="Services Pro vérifiés en Développement Web"
-            subtitle="Des talents sélectionnés manuellement pour répondre au mieux à vos besoins professionnels."
-            services={developmentServices}
-            onSeeAll={() => console.log("Voir tout développement")}
-          />
-        )}
-
-        {/* Montage vidéo populaire */}
-        {videoServices.length > 0 && (
-          <Carousel
-            title="Montage vidéo populaire"
-            services={videoServices}
-            onSeeAll={() => console.log("Voir tout vidéo")}
-          />
-        )}
-
-        {transformedServices.length === 0 && (
-          <div className="text-center py-12">
-            <p className="text-gray-500 text-lg">
-              Aucun service disponible pour le moment.
-            </p>
-          </div>
-        )}
-      </section>
-
-      {/* Section Catégories */}
-      <section className="bg-white py-16 border-t border-gray-200">
-        <div className="max-w-8xl mx-auto px-4 sm:px-6 lg:px-20 py-5">
-          <h2 className="text-3xl font-bold text-gray-900 mb-8">
-            Explorer par catégorie
-          </h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {categories.map((category: string) => (
+      {/* Catégories rapides */}
+      <section className="bg-white border-b border-gray-300">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="flex items-center gap-3 overflow-x-auto">
+            <button
+              onClick={() => setSelectedCategory("all")}
+              className={`px-4 py-2 rounded-full font-medium whitespace-nowrap transition-colors ${
+                selectedCategory === "all"
+                  ? "bg-blue-600 text-white"
+                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+              }`}
+            >
+              Tous les services
+            </button>
+            {categoriesWithServices.map(({ category, count }) => (
               <button
                 key={category}
-                className="p-6 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors text-left group border border-gray-200"
+                onClick={() => setSelectedCategory(category)}
+                className={`px-4 py-2 rounded-full font-medium whitespace-nowrap transition-colors ${
+                  selectedCategory === category
+                    ? "bg-blue-600 text-white"
+                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                }`}
               >
-                <div className="text-4xl mb-3">💼</div>
-                <div className="font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
-                  {category}
-                </div>
+                {category} ({count})
               </button>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Pourquoi Anylibre */}
-      <section className="max-w-8xl mx-auto px-4 sm:px-6 lg:px-20 py-16">
-        <h2 className="text-3xl font-bold text-gray-900 mb-4 text-center">
-          Pourquoi choisir Anylibre ?
-        </h2>
-        <p className="text-xl text-gray-600 text-center mb-12 max-w-2xl mx-auto">
-          La plateforme qui connecte les talents aux opportunités
-        </p>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          <div className="text-center p-6">
-            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <CheckCircle2 className="w-8 h-8 text-green-600" />
+      {/* Filtres avancés */}
+      {showFilters && (
+        <section className="bg-white border-b">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <span className="text-sm font-medium text-gray-700">Prix:</span>
+                <button
+                  onClick={() => setPriceFilter("all")}
+                  className={`px-3 py-1 rounded text-sm ${
+                    priceFilter === "all"
+                      ? "bg-blue-100 text-blue-600"
+                      : "text-gray-600 hover:bg-gray-100"
+                  }`}
+                >
+                  Tous
+                </button>
+                <button
+                  onClick={() => setPriceFilter("low")}
+                  className={`px-3 py-1 rounded text-sm ${
+                    priceFilter === "low"
+                      ? "bg-blue-100 text-blue-600"
+                      : "text-gray-600 hover:bg-gray-100"
+                  }`}
+                >
+                  Moins de $500
+                </button>
+                <button
+                  onClick={() => setPriceFilter("medium")}
+                  className={`px-3 py-1 rounded text-sm ${
+                    priceFilter === "medium"
+                      ? "bg-blue-100 text-blue-600"
+                      : "text-gray-600 hover:bg-gray-100"
+                  }`}
+                >
+                  $500 - $1500
+                </button>
+                <button
+                  onClick={() => setPriceFilter("high")}
+                  className={`px-3 py-1 rounded text-sm ${
+                    priceFilter === "high"
+                      ? "bg-blue-100 text-blue-600"
+                      : "text-gray-600 hover:bg-gray-100"
+                  }`}
+                >
+                  Plus de $1500
+                </button>
+              </div>
+              <button
+                onClick={() => setShowFilters(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <X className="w-5 h-5" />
+              </button>
             </div>
-            <h3 className="text-xl font-bold text-gray-900 mb-2">
-              Qualité garantie
-            </h3>
-            <p className="text-gray-600">
-              Tous nos freelancers sont vérifiés pour vous garantir une
-              excellence constante.
-            </p>
           </div>
+        </section>
+      )}
 
-          <div className="text-center p-6">
-            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Zap className="w-8 h-8 text-blue-600" />
+      {/* Contenu principal */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Affichage filtré */}
+        {(selectedCategory !== "all" || priceFilter !== "all") && (
+          <div className="mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold text-gray-900">
+                Résultats filtrés ({filteredServices.length})
+              </h2>
+              <button
+                onClick={() => {
+                  setSelectedCategory("all");
+                  setPriceFilter("all");
+                }}
+                className="text-sm text-blue-600 hover:text-blue-700"
+              >
+                Réinitialiser les filtres
+              </button>
             </div>
-            <h3 className="text-xl font-bold text-gray-900 mb-2">
-              Livraison rapide
-            </h3>
-            <p className="text-gray-600">
-              Des délais respectés et une communication fluide tout au long du
-              projet.
-            </p>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {filteredServices.slice(0, 12).map((service) => (
+                <ServiceCard
+                  key={service.id}
+                  service={service}
+                  onFavorite={() => {}}
+                  isFavorited={false}
+                />
+              ))}
+            </div>
+            {filteredServices.length === 0 && (
+              <div className="text-center py-12 text-gray-500">
+                Aucun service trouvé avec ces filtres
+              </div>
+            )}
           </div>
+        )}
 
-          <div className="text-center p-6">
-            <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Award className="w-8 h-8 text-purple-600" />
-            </div>
-            <h3 className="text-xl font-bold text-gray-900 mb-2">
-              Support 24/7
-            </h3>
-            <p className="text-gray-600">
-              Notre équipe est disponible pour vous accompagner à chaque étape.
-            </p>
-          </div>
-        </div>
+        {/* Sections par défaut */}
+        {selectedCategory === "all" && priceFilter === "all" && (
+          <>
+            {/* Recommandations */}
+            <Carousel
+              title="Recommandé pour vous"
+              services={recommendedServices}
+              onSeeAll={() => handleSeeAll()}
+              maxItems={8}
+            />
+
+            {/* Budget friendly */}
+            {budgetFriendlyServices.length > 0 && (
+              <Carousel
+                title="Services abordables (moins de $500)"
+                services={budgetFriendlyServices}
+                onSeeAll={() => setPriceFilter("low")}
+                maxItems={8}
+              />
+            )}
+
+            {/* Par catégorie */}
+            {Array.from(servicesByCategory.entries())
+              .slice(0, 3)
+              .map(([category, services]) => (
+                <Carousel
+                  key={category}
+                  title={category}
+                  services={services}
+                  onSeeAll={() => handleSeeAll(category)}
+                  maxItems={8}
+                />
+              ))}
+
+            {/* Services premium */}
+            {premiumServices.length > 0 && (
+              <Carousel
+                title="Services Premium (plus de $1500)"
+                services={premiumServices}
+                onSeeAll={() => setPriceFilter("high")}
+                maxItems={8}
+              />
+            )}
+          </>
+        )}
       </section>
     </div>
   );

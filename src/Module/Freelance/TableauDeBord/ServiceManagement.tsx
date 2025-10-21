@@ -29,6 +29,7 @@ import {
 import { redirect } from "next/navigation";
 import { useAuth } from "@/Context/ContextUser";
 import { useFreelances } from "@/Context/Freelance/FreelanceContext";
+import getDefaultServiceImage from "@/Component/Data/ImageDefault/ImageParDefaut";
 
 // ==================== INTERFACES ====================
 
@@ -205,7 +206,7 @@ const ServiceCard: React.FC<ServiceCardProps> = ({
   const coverImage =
     service.images && service.images.length > 0
       ? service.images[0].url
-      : "https://images.unsplash.com/photo-1626785774573-4b799315345d?w=400";
+      : getDefaultServiceImage(service.category, service.subcategory);
 
   // Prix min/max
   const pricing = useMemo(() => {
@@ -705,7 +706,7 @@ const ServiceList: React.FC = () => {
   };
 
   const handleEditClick = (service: Service) => {
-    redirect(`./Service/Edit?id=${service.id}`);
+    redirect(`./Service/Edit?id=${service.id}&${FREELANCE_ID}`);
   };
 
   // Statistiques

@@ -30,7 +30,7 @@ interface ProfileData {
   description: string;
   rating: string;
   location: string;
-  language: string;
+  language: string[];
   contact: {
     localTime: string;
   };
@@ -84,6 +84,7 @@ interface ServiceDisplay {
   title: string;
   description: string;
   category: string;
+  subcategory: string;
   price: number;
   rating: number;
   reviews: number;
@@ -104,7 +105,7 @@ const FreelancerProfile = () => {
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
 
   // Contextes pour récupérer les données depuis le serveur
-  const { getFreelanceById } = useFreelances();
+  const { getFreelanceById, getPhotoProfileUrl } = useFreelances();
   const { getServicesByFreelanceId } = useServices();
 
   // États pour les données récupérées
@@ -121,8 +122,9 @@ const FreelancerProfile = () => {
     level: "Expert",
     description: freelance?.description || "Description du freelance",
     rating: "4,9",
-    location: "Paris, France",
-    language: "Français, Anglais",
+    location: freelance?.pays + " " + freelance?.ville || "",
+    language:
+      freelance?.langues.find((item) => item.langue)?.langue.split(", ") || [],
     contact: {
       localTime: "GMT+1",
     },
@@ -178,6 +180,7 @@ const FreelancerProfile = () => {
               title: service.titre || service.title || "",
               description: service.description || "",
               category: service.categorie || service.category || "",
+              subcategory: service.subcategory || "",
               price: service.prix || service.price || 0,
               rating: service.note || service.rating || 4.5,
               reviews: service.nombre_avis || service.reviews || 0,
@@ -190,7 +193,9 @@ const FreelancerProfile = () => {
                 level: "Expert",
                 isTopRated: true,
                 isOnline: true,
-                photo_url: freelanceData.photo_url,
+                photo_url:
+                  freelanceData.photo_url &&
+                  getPhotoProfileUrl(freelanceData.photo_url),
               },
               badges: service.badges || [],
             }));
@@ -203,7 +208,12 @@ const FreelancerProfile = () => {
     };
 
     loadData();
-  }, [freelanceId, getFreelanceById, getServicesByFreelanceId]);
+  }, [
+    freelanceId,
+    getFreelanceById,
+    getPhotoProfileUrl,
+    getServicesByFreelanceId,
+  ]);
 
   // Gestion des favoris
   const handleFavorite = (serviceId: string) => {
@@ -269,14 +279,24 @@ const FreelancerProfile = () => {
   return (
     <div className="min-h-screen bg-white">
       {/* En-tête du profil */}
-      <header className="pt-20 pb-12 bg-gradient-to-br from-blue-100 via-blue-200 to-blue-300">
+      <header className="pt-20 pb-12 bg-gradient-to-br from-gray-200 via-yellow-50 to-yellow-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col lg:flex-row items-start lg:items-center gap-8">
             {/* Avatar avec effet glassmorphism */}
             <div className="relative">
               <div className="w-32 h-32 bg-white backdrop-blur-lg rounded-2xl flex items-center justify-center text-blue-400 text-4xl font-bold border-2 border-blue-300 shadow-xl">
-                {freelance.prenom.charAt(0)}
-                {freelance.nom.charAt(0)}
+                {freelance.photo_url ? (
+                  <img
+                    src={
+                      freelance.photo_url &&
+                      getPhotoProfileUrl(freelance.photo_url)
+                    }
+                    alt={freelance.nom}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  freelance.prenom.charAt(0) + " " + freelance.nom.charAt(0)
+                )}
               </div>
               <div className="absolute -bottom-2 -right-2 w-6 h-6 bg-yellow-400 border-4 border-white rounded-full shadow-lg"></div>
             </div>
@@ -642,7 +662,7 @@ const FreelancerProfile = () => {
       </main>
 
       {/* Pied de page */}
-      <footer className="bg-gradient-to-br from-blue-200 to-blue-300 mt-16">
+      <footer className="bg-gradient-to-br from-gray-100 to-gray-200 mt-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <div className="flex flex-col items-center justify-center text-center space-y-4">
             <div className="w-20 h-20 bg-white backdrop-blur-lg rounded-2xl flex items-center justify-center text-2xl font-bold border-2 border-blue-400 text-blue-400">
