@@ -397,17 +397,25 @@ export const SignOut = async () => {
 };
 
 export const getUser = async () => {
-  const { data, error } = await supabaseLogin.auth.getUser();
-
   try {
-    if (!error) {
-      console.log("Utilisateur connecte", data);
-      return data;
-    } else {
-      return false;
+    const { data, error } = await supabaseLogin.auth.getUser();
+
+    if (error) {
+      console.error(
+        "❌ Erreur lors de la récupération de l'utilisateur:",
+        error
+      );
+      return null;
     }
-  } catch (err) {
-    console.error("Erreur lors de la recuperation de l'utilisateur:");
+
+    console.log("✅ Utilisateur connecté:", data);
+    return data;
+  } catch (error) {
+    console.error(
+      "❌ Exception lors de la récupération de l'utilisateur:",
+      error
+    );
+    return null;
   }
 };
 

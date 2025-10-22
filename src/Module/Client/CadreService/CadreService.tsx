@@ -96,7 +96,12 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
     }
 
     return mediaArray;
-  }, [service.video_url, service.images]);
+  }, [
+    service.video_url,
+    service.images,
+    service.category,
+    service.subcategory,
+  ]);
 
   const totalMedias = medias.length;
 

@@ -33,7 +33,11 @@ const Confetti = () => {
   );
 };
 
-const WelcomeModal = ({ formData, showWelcomeModal, setShowWelcomeModal }) => {
+const WelcomeModal = ({
+  formData,
+  showWelcomeModal,
+  setShowWelcomeModal,
+}: any) => {
   const [animateIn, setAnimateIn] = useState(false);
   const [animateOut, setAnimateOut] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
@@ -54,7 +58,7 @@ const WelcomeModal = ({ formData, showWelcomeModal, setShowWelcomeModal }) => {
   }, [showWelcomeModal]);
 
   // Gestion de la fermeture avec animation
-  const closeModal = (callback) => {
+  const closeModal = (callback: any) => {
     setAnimateOut(true);
     setTimeout(() => {
       setAnimateOut(false);

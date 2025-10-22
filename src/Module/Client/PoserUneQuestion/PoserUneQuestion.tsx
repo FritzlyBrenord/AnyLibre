@@ -39,9 +39,11 @@ const PoserUneQuestion: React.FC<MessagingModalProps> = ({
   const [currentTime, setCurrentTime] = useState(new Date());
   const [attachments, setAttachments] = useState<File[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+  const [showEmojis, setShowEmojis] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const emojiPickerRef = useRef<HTMLDivElement>(null);
 
   // Contextes
   const {
@@ -59,15 +61,60 @@ const PoserUneQuestion: React.FC<MessagingModalProps> = ({
   const { getFreelanceById, getUserFreelance, getPhotoProfileUrl } =
     useFreelances();
 
-  // Récupérer les informations du freelance
-  const freelance = getUserFreelance(id);
+  // Récupérer les informations du freelance avec vérification de type
+  const freelanceData = getUserFreelance(id);
+  const isFreelanceValid =
+    freelanceData && typeof freelanceData === "object" && "id" in freelanceData;
+  const freelance = isFreelanceValid ? freelanceData : null;
+
   const photoUrl = getPhotoProfileUrl(freelance?.photo_url || "");
+
+  // Emojis communs
+  const commonEmojis = [
+    "😊",
+    "😄",
+    "😍",
+    "😂",
+    "🥰",
+    "😎",
+    "🤔",
+    "👏",
+    "🙌",
+    "🔥",
+    "⭐",
+    "🎉",
+    "💯",
+    "❤️",
+    "👍",
+    "👎",
+    "🙏",
+    "😢",
+    "😡",
+    "🤯",
+  ];
 
   const predefinedMessages = [
     "💬 Bonjour, je recherche un travail de développement de site web pour...",
     "Bonjour, je cherche quelqu'un qui a de l'expérience avec des plateformes comme...",
     "Bonjour, j'ai besoin d'un service en webdesign, pouvez-vous m'aider avec...",
   ];
+
+  // Fermer le sélecteur d'emojis quand on clique en dehors
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        emojiPickerRef.current &&
+        !emojiPickerRef.current.contains(event.target as Node)
+      ) {
+        setShowEmojis(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -91,11 +138,18 @@ const PoserUneQuestion: React.FC<MessagingModalProps> = ({
     });
   };
 
+  // Ajouter un emoji au message
+  const addEmoji = (emoji: string) => {
+    setMessage((prev) => prev + emoji);
+    setShowEmojis(false);
+  };
+
   // Version temporaire qui simule une conversation
   const handleSendMessage = async () => {
     if (
       (!message.trim() && attachments.length === 0) ||
-      !currentSession?.user?.id
+      !currentSession?.user?.id ||
+      !freelance
     ) {
       return;
     }
@@ -106,7 +160,7 @@ const PoserUneQuestion: React.FC<MessagingModalProps> = ({
       // SIMULATION TEMPORAIRE - Créer un ID de conversation fictif
       const temporaryConversationId = `temp_${Date.now()}_${
         currentSession.user.id
-      }_${freelance?.id}`;
+      }_${freelance.id}`;
 
       console.log(
         "🔄 Utilisation conversation temporaire:",
@@ -138,6 +192,7 @@ const PoserUneQuestion: React.FC<MessagingModalProps> = ({
       setLocalMessages((prev) => [...prev, newMessage]);
       setMessage("");
       setAttachments([]);
+      setShowEmojis(false);
 
       // Simuler une réponse automatique après 2 secondes
       setTimeout(() => {
@@ -152,7 +207,7 @@ const PoserUneQuestion: React.FC<MessagingModalProps> = ({
 
       // ESSAYER d'envoyer le message pour de vrai (mais ne pas bloquer si ça échoue)
       try {
-        if (freelance?.id_user) {
+        if (freelance.id_user) {
           const realConversationId = await createConversation(
             freelance.id_user
           );
@@ -220,6 +275,7 @@ const PoserUneQuestion: React.FC<MessagingModalProps> = ({
   };
 
   const getFileIcon = (file: File) => {
+    // eslint-disable-next-line jsx-a11y/alt-text
     if (file.type.startsWith("image/")) return <Image className="w-4 h-4" />;
     if (file.type.startsWith("video/")) return <Video className="w-4 h-4" />;
     return <File className="w-4 h-4" />;
@@ -274,6 +330,28 @@ const PoserUneQuestion: React.FC<MessagingModalProps> = ({
 
   if (!open) return null;
 
+  // Si le freelance n'est pas valide, afficher un message d'erreur
+  if (!freelance) {
+    return (
+      <div className="fixed inset-0 bg-black/50 bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="bg-white rounded-lg max-w-md w-full p-6 text-center">
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">
+            Freelance non trouvé
+          </h3>
+          <p className="text-gray-600 mb-4">
+            Impossible de charger les informations du freelance.
+          </p>
+          <button
+            onClick={onClose}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            Fermer
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="fixed inset-0 bg-black/50 bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-lg max-w-md w-full max-h-[80vh] flex flex-col overflow-hidden shadow-2xl">
@@ -281,8 +359,8 @@ const PoserUneQuestion: React.FC<MessagingModalProps> = ({
         <div className="bg-black text-white px-4 py-3 flex items-center">
           <Moon className="w-4 h-4 mr-2" />
           <span className="text-sm">
-            Il est {formatTime(currentTime)} pour {freelance?.nom}{" "}
-            {freelance?.prenom}. Cela peut prendre un certain temps pour obtenir
+            Il est {formatTime(currentTime)} pour {freelance.nom}{" "}
+            {freelance.prenom}. Cela peut prendre un certain temps pour obtenir
             une réponse
           </span>
         </div>
@@ -294,14 +372,14 @@ const PoserUneQuestion: React.FC<MessagingModalProps> = ({
               <div className="relative">
                 <img
                   src={photoUrl || "/images/default-avatar.png"}
-                  alt={freelance?.nom}
+                  alt={freelance.nom}
                   className="w-12 h-12 rounded-full object-cover"
                 />
                 <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></div>
               </div>
               <div>
                 <h3 className="font-semibold text-gray-900 text-lg">
-                  Contactez {freelance?.nom} {freelance?.prenom}
+                  Contactez {freelance.nom} {freelance.prenom}
                 </h3>
                 <div className="flex items-center space-x-2 text-sm text-gray-600">
                   <span className="flex items-center">
@@ -310,8 +388,8 @@ const PoserUneQuestion: React.FC<MessagingModalProps> = ({
                   </span>
                   <span>•</span>
                   <span>
-                    {freelance?.specialite &&
-                      `Spécialité: ${freelance?.specialite}`}
+                    {freelance.occupations &&
+                      `Spécialité: ${freelance.occupations}`}
                   </span>
                 </div>
               </div>
@@ -329,9 +407,8 @@ const PoserUneQuestion: React.FC<MessagingModalProps> = ({
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
           {/* Instructions */}
           <div className="text-gray-600 text-sm">
-            Posez une question à {freelance?.nom} {freelance?.prenom} ou
-            partagez les informations de votre projet (critères, échéances,
-            budget, etc.)
+            Posez une question à {freelance.nom} {freelance.prenom} ou partagez
+            les informations de votre projet (critères, échéances, budget, etc.)
           </div>
 
           {/* Messages prédéfinis */}
@@ -419,6 +496,27 @@ const PoserUneQuestion: React.FC<MessagingModalProps> = ({
           </div>
         )}
 
+        {/* Sélecteur d'emojis */}
+        {showEmojis && (
+          <div
+            ref={emojiPickerRef}
+            className="border-t border-gray-200 px-4 py-3 bg-white"
+          >
+            <div className="flex flex-wrap gap-2">
+              {commonEmojis.map((emoji, index) => (
+                <button
+                  key={index}
+                  onClick={() => addEmoji(emoji)}
+                  className="w-8 h-8 flex items-center justify-center text-lg hover:bg-gray-100 rounded transition-colors"
+                  title={`Ajouter ${emoji}`}
+                >
+                  {emoji}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Zone de saisie */}
         <div className="border-t border-gray-200 p-4">
           <div className="flex items-end space-x-2">
@@ -441,7 +539,15 @@ const PoserUneQuestion: React.FC<MessagingModalProps> = ({
               />
             </div>
 
-            <button className="p-2 text-gray-500 hover:text-gray-700 transition-colors">
+            <button
+              onClick={() => setShowEmojis(!showEmojis)}
+              className={`p-2 transition-colors ${
+                showEmojis
+                  ? "text-blue-500"
+                  : "text-gray-500 hover:text-gray-700"
+              }`}
+              title="Insérer un emoji"
+            >
               <Smile className="w-5 h-5" />
             </button>
 
@@ -450,7 +556,7 @@ const PoserUneQuestion: React.FC<MessagingModalProps> = ({
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
                 onKeyPress={handleKeyPress}
-                placeholder={`Tapez votre message à ${freelance?.nom} ${freelance?.prenom} ...`}
+                placeholder={`Tapez votre message à ${freelance.nom} ${freelance.prenom} ...`}
                 rows={3}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none text-sm"
                 maxLength={2500}

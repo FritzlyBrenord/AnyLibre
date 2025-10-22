@@ -109,7 +109,7 @@ interface FilterState {
 }
 
 const RechercheServices: React.FC = () => {
-  const { services, rechercherServices } = useServices();
+  const { services } = useServices();
   const { freelances, getPhotoProfileUrl } = useFreelances();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -132,6 +132,95 @@ const RechercheServices: React.FC = () => {
     tagCategory: "all",
     sortBy: "relevance",
   });
+
+  // Fonction de recherche puissante et sensible
+  const rechercherServices = useCallback(
+    (terme: string): any[] => {
+      if (!terme.trim()) return services;
+
+      const q = terme.toLowerCase().trim();
+
+      return services
+        .filter((service) => {
+          // Recherche dans tous les champs importants
+          const searchableFields = [
+            service.title, // Titre du service
+            service.description, // Description
+            service.category, // Catégorie
+            service.subcategory, // Sous-catégorie
+            ...(service.tags || []), // Tags
+            service.freelance_id, // ID du freelance
+          ].filter(Boolean); // Retirer les valeurs nulles
+
+          // Recherche sensible avec pondération
+          let score = 0;
+
+          // Titre a le plus de poids (3 points)
+          if (service.title?.toLowerCase().includes(q)) {
+            score += 3;
+          }
+
+          // Tags ont un bon poids (2 points)
+          const tagMatches =
+            service.tags?.filter((tag) => tag.toLowerCase().includes(q))
+              .length || 0;
+          score += tagMatches * 2;
+
+          // Catégorie et sous-catégorie (2 points)
+          if (service.category?.toLowerCase().includes(q)) {
+            score += 2;
+          }
+          if (service.subcategory?.toLowerCase().includes(q)) {
+            score += 2;
+          }
+
+          // Description (1 point)
+          if (service.description?.toLowerCase().includes(q)) {
+            score += 1;
+          }
+
+          // Recherche par mots-clés individuels
+          const keywords = q.split(/\s+/).filter((word) => word.length > 2);
+          keywords.forEach((keyword) => {
+            if (service.title?.toLowerCase().includes(keyword)) score += 2;
+            if (
+              service.tags?.some((tag) => tag.toLowerCase().includes(keyword))
+            )
+              score += 1;
+            if (service.category?.toLowerCase().includes(keyword)) score += 1;
+            if (service.subcategory?.toLowerCase().includes(keyword))
+              score += 1;
+            if (service.description?.toLowerCase().includes(keyword))
+              score += 0.5;
+          });
+
+          return score > 0;
+        })
+        .sort((a, b) => {
+          // Calculer le score pour le tri par pertinence
+          const calculateScore = (service: any) => {
+            let serviceScore = 0;
+            const q = terme.toLowerCase().trim();
+
+            if (service.title?.toLowerCase().includes(q)) serviceScore += 3;
+            if (
+              service.tags?.some((tag: string) => tag.toLowerCase().includes(q))
+            )
+              serviceScore += 2;
+            if (service.category?.toLowerCase().includes(q)) serviceScore += 2;
+            if (service.subcategory?.toLowerCase().includes(q))
+              serviceScore += 2;
+            if (service.description?.toLowerCase().includes(q))
+              serviceScore += 1;
+
+            return serviceScore;
+          };
+
+          return calculateScore(b) - calculateScore(a);
+        });
+    },
+    [services]
+  );
 
   // Combiner tous les tags en un seul tableau
   const allTags = useMemo(() => {
@@ -156,6 +245,15 @@ const RechercheServices: React.FC = () => {
     return Array.from(categories);
   }, [services]);
 
+  // Extraire toutes les sous-catégories uniques
+  const allSubcategories = useMemo(() => {
+    const subcategories = new Set<string>();
+    services.forEach((service) => {
+      if (service.subcategory) subcategories.add(service.subcategory);
+    });
+    return Array.from(subcategories);
+  }, [services]);
+
   // Générer les suggestions de recherche
   const generateSuggestions = useCallback(
     (term: string): SearchSuggestion[] => {
@@ -169,7 +267,6 @@ const RechercheServices: React.FC = () => {
         .filter((tag) => tag.toLowerCase().includes(termLower))
         .slice(0, 8)
         .map((tag) => {
-          // Trouver la catégorie du tag
           const category =
             Object.entries(searchTags).find(([cat, tags]) =>
               tags.includes(tag)
@@ -212,16 +309,28 @@ const RechercheServices: React.FC = () => {
 
       suggestions.push(...categorySuggestions);
 
-      return suggestions.slice(0, 12);
+      // Suggestions basées sur les sous-catégories
+      const subcategorySuggestions = allSubcategories
+        .filter((subcategory) => subcategory.toLowerCase().includes(termLower))
+        .slice(0, 3)
+        .map((subcategory) => ({
+          text: subcategory,
+          type: "category" as const,
+          count: services.filter((s) => s.subcategory === subcategory).length,
+        }));
+
+      suggestions.push(...subcategorySuggestions);
+
+      return suggestions.slice(0, 15);
     },
-    [services, allTags, allCategories]
+    [services, allTags, allCategories, allSubcategories]
   );
 
-  // Effectuer la recherche
+  // Effectuer la recherche complète
   const performSearch = useCallback(() => {
     let results = services;
 
-    // Recherche par terme
+    // Recherche par terme avec la fonction améliorée
     if (searchTerm.trim()) {
       results = rechercherServices(searchTerm);
     }
@@ -230,7 +339,9 @@ const RechercheServices: React.FC = () => {
     if (selectedTags.length > 0) {
       results = results.filter((service) =>
         selectedTags.some((tag) =>
-          service.tags?.map((t) => t.toLowerCase()).includes(tag.toLowerCase())
+          service.tags
+            ?.map((t: string) => t.toLowerCase())
+            .includes(tag.toLowerCase())
         )
       );
     }
@@ -280,11 +391,10 @@ const RechercheServices: React.FC = () => {
             new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
         );
         break;
-      case "rating":
-        results.sort((a, b) => (b.rating || 0) - (a.rating || 0));
-        break;
+
+      case "relevance":
       default:
-        // Par défaut, tri par pertinence
+        // Tri par pertinence (déjà fait par la fonction rechercherServices)
         break;
     }
 
@@ -480,7 +590,7 @@ const RechercheServices: React.FC = () => {
                 type="text"
                 value={searchTerm}
                 onChange={(e) => handleSearchInput(e.target.value)}
-                placeholder="Rechercher un service, une compétence, un tag..."
+                placeholder="Rechercher un service, une compétence, un tag, une catégorie..."
                 className="w-full pl-12 pr-4 py-4 border border-gray-300 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-lg placeholder-gray-400"
               />
 
@@ -554,7 +664,7 @@ const RechercheServices: React.FC = () => {
           {selectedTags.length > 0 && (
             <div className="flex flex-wrap gap-2 mt-4 max-w-4xl mx-auto">
               <span className="text-sm text-gray-600 font-medium">
-                Tags actifs :
+                Filtres actifs :
               </span>
               {selectedTags.map((tag) => (
                 <span
@@ -575,7 +685,7 @@ const RechercheServices: React.FC = () => {
                 onClick={() => setSelectedTags([])}
                 className="text-sm text-gray-500 hover:text-gray-700 font-medium"
               >
-                Tout effacer
+                Effacer les tags
               </button>
             </div>
           )}
@@ -586,7 +696,7 @@ const RechercheServices: React.FC = () => {
               <div className="flex items-center gap-2 mb-3">
                 <TrendingUp className="w-4 h-4 text-gray-600" />
                 <span className="text-sm font-medium text-gray-700">
-                  Suggestions :
+                  Recherches populaires :
                 </span>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -640,11 +750,19 @@ const RechercheServices: React.FC = () => {
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span>Tags actifs :</span>
+                    <span>Filtres actifs :</span>
                     <span className="font-semibold text-blue-600">
                       {searchStats.activeTags}
                     </span>
                   </div>
+                  {searchTerm && (
+                    <div className="flex justify-between">
+                      <span>Recherche :</span>
+                      <span className="font-semibold text-green-600">
+                        "{searchTerm}"
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -795,6 +913,7 @@ const RechercheServices: React.FC = () => {
                     : `${searchStats.filteredServices} services sur ${searchStats.totalServices}`}
                   {selectedTags.length > 0 &&
                     ` • ${selectedTags.length} tag(s) actif(s)`}
+                  {searchTerm && ` • Recherche : "${searchTerm}"`}
                 </p>
               </div>
 
@@ -881,13 +1000,17 @@ const RechercheServices: React.FC = () => {
                   Aucun service trouvé
                 </h3>
                 <p className="text-gray-600 mb-6">
-                  Essayez de modifier vos critères de recherche ou vos tags
+                  {searchTerm || selectedTags.length > 0
+                    ? "Essayez de modifier vos critères de recherche ou vos tags"
+                    : "Aucun service disponible pour le moment"}
                 </p>
                 <button
                   onClick={clearAllFilters}
                   className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
                 >
-                  Réinitialiser la recherche
+                  {searchTerm || selectedTags.length > 0
+                    ? "Réinitialiser la recherche"
+                    : "Voir tous les services"}
                 </button>
               </div>
             )}

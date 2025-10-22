@@ -168,12 +168,12 @@ const Header = () => {
   );
 
   // Fonction pour formater la date des messages
-  const formatMessageTime = (dateString) => {
+  const formatMessageTime = (dateString: any) => {
     if (!dateString) return "";
 
     const date = new Date(dateString);
     const now = new Date();
-    const diffMs = now - date;
+    const diffMs = Number(now) - Number(date);
     const diffMins = Math.floor(diffMs / (1000 * 60));
     const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
     const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
@@ -197,7 +197,11 @@ const Header = () => {
   // Récupérer les conversations récentes pour le dropdown
   const recentConversations = conversations
     .filter((conv) => !conv.is_archived && !conv.is_spam)
-    .sort((a, b) => new Date(b.last_message_at) - new Date(a.last_message_at))
+    .sort(
+      (a, b) =>
+        Number(new Date(b.last_message_at)) -
+        Number(new Date(a.last_message_at))
+    )
     .slice(0, 3);
 
   // Notifications factices (à remplacer par des données réelles)
@@ -293,7 +297,7 @@ const Header = () => {
   };
 
   // Composant pour afficher un message dans le dropdown
-  const MessageItem = ({ conversation }) => {
+  const MessageItem = ({ conversation }: any) => {
     const userInfo = useUserInfo(conversation.id);
 
     return (

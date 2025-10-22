@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, ChangeEvent, JSX } from "react";
 import {
   Search,
   Package,
@@ -17,8 +17,45 @@ import {
   MessageSquare,
 } from "lucide-react";
 
+// Types
+interface Order {
+  id: number;
+  client: string;
+  service: string;
+  dueDate: string;
+  deliveredDate: string | null;
+  total: number;
+  status: "actif" | "révision" | "livré" | "terminé" | "annulé" | "tard";
+  priority: boolean;
+  note: string;
+  deliveryMessage: string;
+  revisionMessage: string;
+  cancellationReason: string;
+  revisionCount: number;
+}
+
+interface StatusBadge {
+  color: string;
+  icon: string;
+  label: string;
+}
+
+interface StatusBadges {
+  [key: string]: StatusBadge;
+}
+
+interface Counts {
+  priorité: number;
+  actif: number;
+  tard: number;
+  révision: number;
+  livré: number;
+  terminé: number;
+  annulé: number;
+}
+
 const OrderManagement = () => {
-  const [orders, setOrders] = useState([
+  const [orders, setOrders] = useState<Order[]>([
     {
       id: 1,
       client: "Marie Dupont",
@@ -131,14 +168,14 @@ const OrderManagement = () => {
     },
   ]);
 
-  const [activeTab, setActiveTab] = useState("actif");
-  const [searchTerm, setSearchTerm] = useState("");
-  const [showDeliveryModal, setShowDeliveryModal] = useState(false);
-  const [showDetailsModal, setShowDetailsModal] = useState(false);
-  const [selectedOrder, setSelectedOrder] = useState(null);
-  const [deliveryMessage, setDeliveryMessage] = useState("");
-  const [deliveryFile, setDeliveryFile] = useState(null);
-  const [isRevision, setIsRevision] = useState(false);
+  const [activeTab, setActiveTab] = useState<string>("actif");
+  const [searchTerm, setSearchTerm] = useState<string>("");
+  const [showDeliveryModal, setShowDeliveryModal] = useState<boolean>(false);
+  const [showDetailsModal, setShowDetailsModal] = useState<boolean>(false);
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [deliveryMessage, setDeliveryMessage] = useState<string>("");
+  const [deliveryFile, setDeliveryFile] = useState<File | null>(null);
+  const [isRevision, setIsRevision] = useState<boolean>(false);
 
   const tabs = [
     {
@@ -174,7 +211,7 @@ const OrderManagement = () => {
     return matchesTab && matchesSearch;
   });
 
-  const getCounts = () => {
+  const getCounts = (): Counts => {
     return {
       priorité: orders.filter((o) => o.priority).length,
       actif: orders.filter((o) => o.status === "actif").length,
@@ -188,7 +225,7 @@ const OrderManagement = () => {
 
   const counts = getCounts();
 
-  const openDeliveryModal = (order, revision = false) => {
+  const openDeliveryModal = (order: Order, revision: boolean = false): void => {
     setSelectedOrder(order);
     setIsRevision(revision);
     setShowDeliveryModal(true);
@@ -196,12 +233,12 @@ const OrderManagement = () => {
     setDeliveryFile(null);
   };
 
-  const openDetailsModal = (order) => {
+  const openDetailsModal = (order: Order): void => {
     setSelectedOrder(order);
     setShowDetailsModal(true);
   };
 
-  const closeModals = () => {
+  const closeModals = (): void => {
     setShowDeliveryModal(false);
     setShowDetailsModal(false);
     setSelectedOrder(null);
@@ -210,11 +247,13 @@ const OrderManagement = () => {
     setIsRevision(false);
   };
 
-  const handleDeliver = () => {
+  const handleDeliver = (): void => {
     if (!deliveryMessage.trim()) {
       alert("Veuillez ajouter un message de livraison");
       return;
     }
+
+    if (!selectedOrder) return;
 
     setOrders(
       orders.map((order) =>
@@ -240,7 +279,7 @@ const OrderManagement = () => {
     );
   };
 
-  const handleMarkAsCompleted = (orderId) => {
+  const handleMarkAsCompleted = (orderId: number): void => {
     setOrders((prev) =>
       prev.map((order) =>
         order.id === orderId ? { ...order, status: "terminé" } : order
@@ -250,8 +289,8 @@ const OrderManagement = () => {
     alert("Commande marquée comme terminée avec succès!");
   };
 
-  const getStatusBadge = (status) => {
-    const badges = {
+  const getStatusBadge = (status: string): JSX.Element => {
+    const badges: StatusBadges = {
       actif: {
         color: "bg-blue-100 text-blue-800 border border-blue-300",
         icon: "🟡",
@@ -293,7 +332,7 @@ const OrderManagement = () => {
     );
   };
 
-  const formatDate = (dateString) => {
+  const formatDate = (dateString: string | null): string => {
     if (!dateString) return "-";
     const date = new Date(dateString);
     return date.toLocaleDateString("fr-FR", {
@@ -301,6 +340,12 @@ const OrderManagement = () => {
       month: "short",
       year: "numeric",
     });
+  };
+
+  const handleFileChange = (e: ChangeEvent<HTMLInputElement>): void => {
+    if (e.target.files && e.target.files[0]) {
+      setDeliveryFile(e.target.files[0]);
+    }
   };
 
   const totalRevenue = filteredOrders.reduce(
@@ -391,7 +436,7 @@ const OrderManagement = () => {
             {tabs.map((tab) => {
               const Icon = tab.icon;
               const isActive = activeTab === tab.id;
-              const count = counts[tab.id];
+              const count = counts[tab.id as keyof Counts];
 
               return (
                 <button
@@ -663,7 +708,7 @@ const OrderManagement = () => {
                   <input
                     type="file"
                     id="deliveryFile"
-                    onChange={(e) => setDeliveryFile(e.target.files[0])}
+                    onChange={handleFileChange}
                     className="hidden"
                   />
                   <label

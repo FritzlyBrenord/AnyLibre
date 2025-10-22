@@ -126,15 +126,29 @@ const DEFAULT_IMAGE =
  * @param {string} subcategory - La sous-catégorie du service
  * @returns {string} URL de l'image par défaut
  */
-export const getDefaultServiceImage = (category, subcategory) => {
+export const getDefaultServiceImage = (category: any, subcategory: any) => {
   // Priorité 1: Image spécifique à la sous-catégorie
-  if (subcategory && DEFAULT_IMAGES_BY_SUBCATEGORY[subcategory]) {
-    return DEFAULT_IMAGES_BY_SUBCATEGORY[subcategory];
+  if (
+    subcategory &&
+    DEFAULT_IMAGES_BY_SUBCATEGORY[
+      subcategory as keyof typeof DEFAULT_IMAGES_BY_SUBCATEGORY
+    ]
+  ) {
+    return DEFAULT_IMAGES_BY_SUBCATEGORY[
+      subcategory as keyof typeof DEFAULT_IMAGES_BY_SUBCATEGORY
+    ];
   }
 
   // Priorité 2: Image de la catégorie
-  if (category && DEFAULT_IMAGES_BY_CATEGORY[category]) {
-    return DEFAULT_IMAGES_BY_CATEGORY[category];
+  if (
+    category &&
+    DEFAULT_IMAGES_BY_CATEGORY[
+      category as keyof typeof DEFAULT_IMAGES_BY_CATEGORY
+    ]
+  ) {
+    return DEFAULT_IMAGES_BY_CATEGORY[
+      category as keyof typeof DEFAULT_IMAGES_BY_CATEGORY
+    ];
   }
 
   // Priorité 3: Image par défaut générique

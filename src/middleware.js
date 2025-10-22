@@ -59,26 +59,34 @@ export async function middleware(request) {
   
   console.log("🔍 Page:", path);
 
-  // Chemins publics
+  // Vérifier si l'utilisateur est connecté
+  const { data: { user }, error } = await supabase.auth.getUser();
+  const isAuthenticated = !!user && !error;
+
+  // Si l'utilisateur est connecté et accède à la racine, rediriger vers /Accueil
+  if (isAuthenticated && path === '/') {
+    console.log("✅ Utilisateur connecté - Redirection vers /Accueil");
+    return NextResponse.redirect(new URL('/Accueil', request.url));
+  }
+
+  // Chemins publics (accessibles sans authentification)
   const publicPaths = ['/', '/Authentification', '/ResultatRecherche'];
   if (publicPaths.includes(path)) {
     console.log("✅ Public");
     return response;
   }
 
+  // Si on arrive ici, l'utilisateur n'est pas connecté et essaie d'accéder à une route protégée
+  if (!isAuthenticated) {
+    console.log("❌ Pas connecté - Redirection vers Authentification");
+    const loginUrl = new URL('/Authentification', request.url);
+    loginUrl.searchParams.set('redirect', path);
+    return NextResponse.redirect(loginUrl);
+  }
+
+  console.log("✅ Connecté:", user.email);
+
   try {
-    // Récupérer l'utilisateur (équivalent de getSession)
-    const { data: { user }, error } = await supabase.auth.getUser();
-    
-    if (!user || error) {
-      console.log("❌ Pas connecté");
-      const loginUrl = new URL('/Authentification', request.url);
-      loginUrl.searchParams.set('redirect', path);
-      return NextResponse.redirect(loginUrl);
-    }
-
-    console.log("✅ Connecté:", user.email);
-
     // Vérifier le profil utilisateur
     const { data: userProfile } = await supabase
       .from('users')

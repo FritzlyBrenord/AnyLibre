@@ -282,7 +282,7 @@ const HeaderAuth = () => {
   };
 
   // Fermer tous les menus sauf celui spécifié
-  const closeAllMenusExcept = (menuToKeepOpen) => {
+  const closeAllMenusExcept = (menuToKeepOpen: any) => {
     if (menuToKeepOpen !== "profile") setProfileMenuOpen(false);
     if (menuToKeepOpen !== "messages") setMessagesMenuOpen(false);
     if (menuToKeepOpen !== "notifications") setNotificationsMenuOpen(false);
@@ -304,12 +304,12 @@ const HeaderAuth = () => {
   ];
 
   // Fonction pour formater la date des messages
-  const formatMessageTime = (dateString) => {
+  const formatMessageTime = (dateString: any) => {
     if (!dateString) return "";
 
     const date = new Date(dateString);
     const now = new Date();
-    const diffMs = now - date;
+    const diffMs = Number(now) - Number(date);
     const diffMins = Math.floor(diffMs / (1000 * 60));
     const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
     const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
@@ -333,7 +333,11 @@ const HeaderAuth = () => {
   // Récupérer les conversations récentes pour le dropdown
   const recentConversations = conversations
     .filter((conv) => !conv.is_archived && !conv.is_spam)
-    .sort((a, b) => new Date(b.last_message_at) - new Date(a.last_message_at))
+    .sort(
+      (a, b) =>
+        Number(new Date(b.last_message_at)) -
+        Number(new Date(a.last_message_at))
+    )
     .slice(0, 3);
 
   // Fonction pour obtenir les initiales de l'utilisateur
@@ -349,7 +353,7 @@ const HeaderAuth = () => {
   };
 
   // Composant pour afficher un message dans le dropdown
-  const MessageItem = ({ conversation }) => {
+  const MessageItem = ({ conversation }: any) => {
     const userInfo = useUserInfo(conversation.id);
 
     return (
@@ -1061,7 +1065,7 @@ const HeaderAuth = () => {
 
           {/* Mobile Menu */}
           {isMenuOpen && (
-            <div className="lg:hidden border-t border-gray-100 py-4">
+            <div className="lg:hidden border-t border-gray-100 h-[90vh] py-4 overflow-y-scroll">
               <div className="flex flex-col space-y-1">
                 {isLoggedIn && (
                   <div className="px-3 py-3 bg-gray-50 rounded-lg mb-2">

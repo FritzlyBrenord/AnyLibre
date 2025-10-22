@@ -1518,8 +1518,9 @@ const FreelanceRegistrationForm: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => {
-                      const websiteInput =
-                        document.getElementById("websiteInput");
+                      const websiteInput = document.getElementById(
+                        "websiteInput"
+                      ) as HTMLInputElement;
                       if (
                         websiteInput?.value &&
                         !formData.websites.includes(websiteInput.value)

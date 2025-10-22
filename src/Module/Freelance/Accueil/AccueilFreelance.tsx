@@ -179,7 +179,7 @@ const BecomeFrelancePage = () => {
     },
   ];
 
-  const toggleFaq = (index) => {
+  const toggleFaq = (index: any) => {
     setOpenFaq(openFaq === index ? null : index);
   };
 

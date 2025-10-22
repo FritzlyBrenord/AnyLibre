@@ -444,7 +444,6 @@ const MessagingInterface = () => {
       }
     } catch (error) {
       console.error("Erreur suppression message:", error);
-      setError("Erreur lors de la suppression du message");
     }
   };
   const handleDeleteSelected = async () => {

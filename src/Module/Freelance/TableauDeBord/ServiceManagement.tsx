@@ -621,7 +621,7 @@ const ServiceList: React.FC = () => {
 
   // Récupérer dynamiquement le freelance de l'utilisateur connecté
   const freelance = userId ? getUserFreelance(userId) : false;
-  const FREELANCE_ID = freelance && freelance.id;
+  const FREELANCE_ID: any = freelance && freelance.id;
   const ITEMS_PER_PAGE = 6;
 
   const tabs = [
@@ -636,7 +636,7 @@ const ServiceList: React.FC = () => {
   // Récupérer les services du freelance
   const freelanceServices = useMemo(() => {
     return getServicesByFreelanceId(FREELANCE_ID);
-  }, [services, FREELANCE_ID]);
+  }, [getServicesByFreelanceId, FREELANCE_ID]);
 
   // Filtrer et rechercher les services
   const filteredServices = useMemo(() => {

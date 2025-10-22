@@ -12,7 +12,7 @@ import {
   TrendingUp,
 } from "lucide-react";
 
-export default function OnboardingModal({ isOpen, onClose }) {
+export default function OnboardingModal({ isOpen, onClose }: any) {
   const [checklist, setChecklist] = useState([
     { id: 1, label: "Compléter votre profil", completed: false, icon: User },
     { id: 2, label: "Ajouter votre portfolio", completed: false, icon: Award },
@@ -30,7 +30,7 @@ export default function OnboardingModal({ isOpen, onClose }) {
     },
   ]);
 
-  const toggleChecklistItem = (id) => {
+  const toggleChecklistItem = (id: any) => {
     setChecklist(
       checklist.map((item) =>
         item.id === id ? { ...item, completed: !item.completed } : item

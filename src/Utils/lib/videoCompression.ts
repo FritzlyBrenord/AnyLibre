@@ -59,12 +59,6 @@ export const compressVideo = async (
     });
 
     // Commande FFmpeg pour compression optimale
-    // -c:v libx264 : codec H.264 (meilleure compatibilité)
-    // -crf : qualité (0-51, plus bas = meilleure qualité)
-    // -preset : vitesse d'encodage (faster = plus rapide)
-    // -vf scale : redimensionner si nécessaire
-    // -movflags +faststart : optimisation pour streaming web
-    // -t : limiter la durée
     await ffmpeg.exec([
       '-i', 'input.mp4',
       '-c:v', 'libx264',
@@ -80,7 +74,20 @@ export const compressVideo = async (
 
     // Lire le fichier compressé
     const data = await ffmpeg.readFile('output.mp4');
-    const compressedBlob = new Blob([data], { type: 'video/mp4' });
+    
+    let compressedBlob: Blob;
+    
+    // Vérifier le type de données retourné et convertir en ArrayBuffer standard
+    if (typeof data === 'string') {
+      // Si c'est une string, convertir en Blob
+      compressedBlob = new Blob([new TextEncoder().encode(data)], { type: 'video/mp4' });
+    } else {
+      // Si c'est un Uint8Array, créer un nouvel ArrayBuffer standard
+      const standardArrayBuffer = new ArrayBuffer(data.length);
+      const standardUint8Array = new Uint8Array(standardArrayBuffer);
+      standardUint8Array.set(data);
+      compressedBlob = new Blob([standardArrayBuffer], { type: 'video/mp4' });
+    }
 
     // Vérifier la taille finale
     const compressedSizeMB = compressedBlob.size / (1024 * 1024);

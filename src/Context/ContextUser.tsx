@@ -225,10 +225,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   };
 
   // Fonction pour ajouter un utilisateur
-  // Dans votre AuthProvider, modifiez la fonction AddUser :
   const AddUser = async (
     userData: Omit<UserProfile, "id" | "created_at" | "updated_at">,
-    password: string // Ajouter le paramètre password
+    password: string
   ): Promise<boolean> => {
     let authUserId: string | null = null;
 
@@ -251,7 +250,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
       // ===== ÉTAPE 2: Créer l'utilisateur dans l'authentification =====
       console.log("3️⃣ Création auth avec le mot de passe fourni...");
-      authUserId = await CreerUtilisateur(userData.email, password); // Utiliser le mot de passe fourni
+      authUserId = await CreerUtilisateur(userData.email, password);
 
       console.log("4️⃣ Auth User ID reçu:", authUserId);
 
@@ -683,7 +682,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
 
       // ===== ÉTAPE 4: Mettre à jour la session du context =====
       const authUser = await getUser();
-      if (isValidAuthUser(authUser)) {
+
+      // Vérifier le type de authUser avant d'accéder à ses propriétés
+      if (authUser && typeof authUser === "object" && "user" in authUser) {
         const updatedUser = await GetUserById(user.id);
 
         setCurrentSession({
@@ -748,7 +749,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     const checkSession = async () => {
       try {
         const authUser = await getUser();
-        if (isValidAuthUser(authUser) && authUser.user?.email) {
+
+        // Vérifier le type de authUser avant d'accéder à ses propriétés
+        if (
+          authUser &&
+          typeof authUser === "object" &&
+          "user" in authUser &&
+          authUser.user?.email
+        ) {
           const user = await GetUserByEmail(authUser.user.email);
           if (user && !user.is_blocked) {
             setCurrentSession({

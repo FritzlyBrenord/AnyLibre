@@ -358,7 +358,7 @@ export const FreelancesProvider: React.FC<FreelancesProviderProps> = ({
       }
 
       // Vérifier si l'utilisateur est déjà freelance
-      const userFreelanceExists: boolean = await DataExsite(
+      const userFreelanceExists: any = await DataExsite(
         "freelances",
         "id_user",
         data.id_user
@@ -369,7 +369,7 @@ export const FreelancesProvider: React.FC<FreelancesProviderProps> = ({
       }
 
       // Vérifier si l'email existe déjà
-      const emailExists: boolean = await DataExsite(
+      const emailExists: any = await DataExsite(
         "freelances",
         "email",
         data.email
@@ -379,7 +379,7 @@ export const FreelancesProvider: React.FC<FreelancesProviderProps> = ({
       }
 
       // Vérifier si le username existe déjà
-      const usernameExists: boolean = await DataExsite(
+      const usernameExists: any = await DataExsite(
         "freelances",
         "username",
         data.username
@@ -391,7 +391,7 @@ export const FreelancesProvider: React.FC<FreelancesProviderProps> = ({
       // Générer un code unique
       const code: string = await genererNouveauCode(data.nom, data.prenom);
 
-      const codeExists: boolean = await DataExsite("freelances", "code", code);
+      const codeExists: any = await DataExsite("freelances", "code", code);
       if (codeExists) {
         throw new Error("Erreur lors de la génération du code");
       }
@@ -465,7 +465,7 @@ export const FreelancesProvider: React.FC<FreelancesProviderProps> = ({
 
       // Si l'email est modifié, vérifier qu'il n'existe pas déjà
       if (data.email && data.email !== freelanceExistant.email) {
-        const emailExists: boolean = await DataExsite(
+        const emailExists: any = await DataExsite(
           "freelances",
           "email",
           data.email
@@ -477,7 +477,7 @@ export const FreelancesProvider: React.FC<FreelancesProviderProps> = ({
 
       // Si le username est modifié, vérifier qu'il n'existe pas déjà
       if (data.username && data.username !== freelanceExistant.username) {
-        const usernameExists: boolean = await DataExsite(
+        const usernameExists: any = await DataExsite(
           "freelances",
           "username",
           data.username
@@ -487,7 +487,7 @@ export const FreelancesProvider: React.FC<FreelancesProviderProps> = ({
         }
       }
 
-      const ok: boolean = await UpdateData("freelances", id, data);
+      const ok: any = await UpdateData("freelances", id, data);
 
       if (!ok) {
         throw new Error("Erreur lors de la modification du freelance");
@@ -511,7 +511,7 @@ export const FreelancesProvider: React.FC<FreelancesProviderProps> = ({
       setIsLoading(true);
       setError(null);
 
-      const ok: boolean = await UpdateData("freelances", id, {
+      const ok: any = await UpdateData("freelances", id, {
         isdeleted: true,
       });
 
@@ -544,7 +544,7 @@ export const FreelancesProvider: React.FC<FreelancesProviderProps> = ({
         await supprimerPhotoProfile(id);
       }
 
-      const ok: boolean = await DeleteData("freelances", id);
+      const ok: any = await DeleteData("freelances", id);
 
       if (!ok) {
         throw new Error(
@@ -572,7 +572,7 @@ export const FreelancesProvider: React.FC<FreelancesProviderProps> = ({
       setIsLoading(true);
       setError(null);
 
-      const ok: boolean = await UpdateData("freelances", id, {
+      const ok: any = await UpdateData("freelances", id, {
         isdeleted: false,
       });
 
@@ -601,7 +601,7 @@ export const FreelancesProvider: React.FC<FreelancesProviderProps> = ({
       setIsLoading(true);
       setError(null);
 
-      const ok: boolean = await UpdateData("freelances", id, {
+      const ok: any = await UpdateData("freelances", id, {
         statut: nouveauStatut,
       });
 

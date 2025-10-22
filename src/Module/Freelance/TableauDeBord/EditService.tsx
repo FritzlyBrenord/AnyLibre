@@ -68,7 +68,7 @@ const EditService: React.FC = () => {
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [isLoadingService, setIsLoadingService] = useState<boolean>(true);
   const [isDataLoaded, setIsDataLoaded] = useState<boolean>(false);
-  const FREELANCE_ID = searchParams.get("id")?.split("&")[1];
+  const FREELANCE_ID: any = searchParams.get("id")?.split("&")[1];
 
   const { getFreelanceById } = useFreelances();
   const {
@@ -198,7 +198,7 @@ const EditService: React.FC = () => {
     };
 
     loadService();
-  }, [serviceId, isDataLoaded]); // Dépendances minimales
+  }, [serviceId, isDataLoaded, router, getServiceById, selectedTags, addTag]); // Dépendances minimales
 
   // ==================== VALIDATION ====================
   const validateStep = (
@@ -308,7 +308,9 @@ const EditService: React.FC = () => {
     const category =
       userCategories[formData.category as keyof typeof userCategories];
     if (!category) return [];
-    const subcategory = category.subcategories[formData.subcategory] as {
+    const subcategory = category.subcategories[
+      formData.subcategory as keyof typeof category.subcategories
+    ] as {
       metadata?: any[];
     };
     return subcategory?.metadata || [];
@@ -1000,7 +1002,6 @@ const EditService: React.FC = () => {
                           </button>
                         )}
                       </div>
-
                       <div className="grid grid-cols-3 gap-4 mb-4">
                         <div>
                           <label className="block text-sm font-bold text-gray-900 mb-2">
@@ -1065,7 +1066,73 @@ const EditService: React.FC = () => {
                           />
                         </div>
                       </div>
-
+                      {/* Highlights */}
+                      <div className="mb-4">
+                        <label className="block text-sm font-bold text-gray-900 mb-2">
+                          Points clés (un par ligne)
+                        </label>
+                        <textarea
+                          rows={2}
+                          placeholder="Ex: 20 photos&#10;Éclairage standard"
+                          value={(pkg.highlights || []).join("\n")}
+                          onChange={(e) => {
+                            const newPackages = [...formData.packages];
+                            newPackages[index].highlights = e.target.value
+                              .split("\n")
+                              .filter((h) => h.trim());
+                            setFormData({ ...formData, packages: newPackages });
+                          }}
+                          className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                      {/* Badge Popular */}
+                      <div className="mb-4">
+                        <label className="flex items-center">
+                          <input
+                            type="checkbox"
+                            checked={pkg.popular || false}
+                            onChange={(e) => {
+                              const newPackages = [...formData.packages];
+                              newPackages[index].popular = e.target.checked;
+                              setFormData({
+                                ...formData,
+                                packages: newPackages,
+                              });
+                            }}
+                            className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 mr-2"
+                          />
+                          <span className="text-sm font-medium text-gray-900">
+                            Marquer comme populaire
+                          </span>
+                        </label>
+                      </div>
+                      {/* Features */}
+                      <div className="mb-4">
+                        <label className="block text-sm font-bold text-gray-900 mb-2">
+                          Caractéristiques détaillées
+                        </label>
+                        <div className="space-y-2 bg-gray-100 p-3 rounded">
+                          {(pkg.features || []).map((feature, fIdx) => (
+                            <div
+                              key={feature.id}
+                              className="flex gap-2 text-sm"
+                            >
+                              <span>{feature.icon || "•"}</span>
+                              <span className="text-gray-700">
+                                {feature.label}
+                              </span>
+                              <span className="text-gray-500">
+                                ({feature.value}
+                                {feature.unit ? ` ${feature.unit}` : ""})
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">
+                          Les features se remplissent automatiquement selon le
+                          service
+                        </p>
+                      </div>
                       <div>
                         <label className="block text-sm font-bold text-gray-900 mb-2">
                           Description du forfait *
@@ -1100,11 +1167,17 @@ const EditService: React.FC = () => {
                           packages: [
                             ...formData.packages,
                             {
-                              name: names[formData.packages.length],
+                              name: names[formData.packages.length] as
+                                | "Basic"
+                                | "Standard"
+                                | "Premium",
                               price: "",
                               deliveryDays: "",
                               revisions: "",
                               description: "",
+                              features: [],
+                              highlights: [],
+                              popular: false,
                             },
                           ],
                         });
@@ -2423,9 +2496,8 @@ const EditService: React.FC = () => {
                             </p>
                             <p className="text-gray-900">
                               {formData.category
-                                ? categoriesData[
-                                    formData.category as keyof typeof categoriesData
-                                  ]?.label
+                                ? (userCategories as any)[formData.category]
+                                    ?.label
                                 : "Non renseigné"}
                             </p>
                           </div>
@@ -2435,11 +2507,9 @@ const EditService: React.FC = () => {
                             </p>
                             <p className="text-gray-900">
                               {formData.subcategory && formData.category
-                                ? categoriesData[
-                                    formData.category as keyof typeof categoriesData
-                                  ]?.subcategories?.[
-                                    formData.subcategory as string
-                                  ]?.label || "Non renseigné"
+                                ? (userCategories as any)[formData.category]
+                                    ?.subcategories?.[formData.subcategory]
+                                    ?.label || "Non renseigné"
                                 : "Non renseigné"}
                             </p>
                           </div>
@@ -2484,6 +2554,11 @@ const EditService: React.FC = () => {
                                 <h5 className="font-semibold text-gray-900">
                                   {pkg.name}
                                 </h5>
+                                {pkg.popular && (
+                                  <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full font-bold ml-2">
+                                    ⭐ POPULAIRE
+                                  </span>
+                                )}
                                 <span className="text-lg font-bold text-green-600">
                                   {pkg.price ? `${pkg.price}` : "Non défini"}
                                 </span>
@@ -2505,6 +2580,30 @@ const EditService: React.FC = () => {
                                     {pkg.revisions || "Non défini"}
                                   </span>
                                 </div>
+                                {pkg.highlights &&
+                                  pkg.highlights.length > 0 && (
+                                    <div className="text-sm text-gray-600 mt-2">
+                                      <p className="font-medium mb-1">
+                                        Points clés:
+                                      </p>
+                                      {pkg.highlights.map((h, idx) => (
+                                        <p key={idx}>✓ {h}</p>
+                                      ))}
+                                    </div>
+                                  )}
+                                {pkg.features && pkg.features.length > 0 && (
+                                  <div className="text-sm text-gray-600 mt-2">
+                                    <p className="font-medium mb-1">
+                                      Caractéristiques:
+                                    </p>
+                                    {pkg.features.map((f, idx) => (
+                                      <p key={idx}>
+                                        {f.icon || "•"} {f.label}: {f.value}
+                                        {f.unit ? ` ${f.unit}` : ""}
+                                      </p>
+                                    ))}
+                                  </div>
+                                )}
                               </div>
                               {pkg.description && (
                                 <p className="text-sm text-gray-700 mt-2">

@@ -49,7 +49,15 @@ interface Category {
   label: string;
   subcategories: Record<string, Subcategory>;
 }
+// ==================== INTERFACES GLOBALES ====================
 
+declare global {
+  interface Window {
+    cancelCurrentImageUpload?: () => void;
+    cancelCurrentDocumentUpload?: () => void;
+    cancelCurrentVideoUpload?: () => void;
+  }
+}
 interface LocalFormData {
   title: string;
   category: string;
@@ -323,7 +331,7 @@ const AddServiceManagement: React.FC = () => {
 
   // ==================== HANDLERS ====================
 
-  const handleImageUpload = async (files) => {
+  const handleImageUpload = async (files: FileList) => {
     const fileArray = Array.from(files);
 
     if (fileArray.length + formData.images.length > 3) {
@@ -334,20 +342,16 @@ const AddServiceManagement: React.FC = () => {
     setIsImageUploading(true);
     setImageUploadProgress(0);
 
-    // Variable pour suivre si l'upload a été annulé
     let isCancelled = false;
 
-    // Exposer la fonction d'annulation
     window.cancelCurrentImageUpload = () => {
       isCancelled = true;
     };
 
     try {
       for (let i = 0; i < fileArray.length; i++) {
-        // Mettre à jour la progression
         setImageUploadProgress(Math.round((i / fileArray.length) * 100));
 
-        // Vérifier si l'utilisateur a annulé
         if (isCancelled) break;
 
         const result = await uploadImage(fileArray[i], FREELANCE_ID);
@@ -365,7 +369,7 @@ const AddServiceManagement: React.FC = () => {
       }
     } finally {
       setIsImageUploading(false);
-      window.cancelCurrentImageUpload = null;
+      window.cancelCurrentImageUpload = undefined;
     }
   };
 
@@ -387,7 +391,7 @@ const AddServiceManagement: React.FC = () => {
     }
   };
 
-  const handleDocumentUpload = async (files) => {
+  const handleDocumentUpload = async (files: FileList) => {
     const fileArray = Array.from(files);
 
     if (fileArray.length + formData.documents.length > 2) {
@@ -398,20 +402,16 @@ const AddServiceManagement: React.FC = () => {
     setIsDocumentUploading(true);
     setDocumentUploadProgress(0);
 
-    // Variable pour suivre si l'upload a été annulé
     let isCancelled = false;
 
-    // Exposer la fonction d'annulation
     window.cancelCurrentDocumentUpload = () => {
       isCancelled = true;
     };
 
     try {
       for (let i = 0; i < fileArray.length; i++) {
-        // Mettre à jour la progression
         setDocumentUploadProgress(Math.round((i / fileArray.length) * 100));
 
-        // Vérifier si l'utilisateur a annulé
         if (isCancelled) break;
 
         const result = await uploadDocument(fileArray[i], FREELANCE_ID);
@@ -429,7 +429,7 @@ const AddServiceManagement: React.FC = () => {
       }
     } finally {
       setIsDocumentUploading(false);
-      window.cancelCurrentDocumentUpload = null;
+      window.cancelCurrentDocumentUpload = undefined;
     }
   };
 
@@ -451,37 +451,25 @@ const AddServiceManagement: React.FC = () => {
     }
   };
 
-  const handleVideoUpload = async (file) => {
+  const handleVideoUpload = async (file: File) => {
     if (videoPath) {
       await deleteVideo(videoPath);
     }
 
     try {
-      // Variable qui sera utilisée pour vérifier si l'utilisateur a annulé
       let isCancelled = false;
 
-      // Référence à la fonction d'annulation pour l'exposer
       const cancelUpload = () => {
         isCancelled = true;
-        // Mettre à jour l'interface pour montrer que l'annulation est en cours
-        setVideoUploadStep("cancelling");
       };
 
-      // Exposer la fonction d'annulation
       window.cancelCurrentVideoUpload = cancelUpload;
 
-      const result = await uploadVideo(file, FREELANCE_ID, {
-        onProgress: (progress) => {
-          // Cette fonction est appelée par le service pour mettre à jour la progression
-          if (isCancelled) return false; // Indique au service d'arrêter le traitement
-          return true; // Continue le traitement
-        },
-      });
+      // Corriger l'appel à uploadVideo - utiliser seulement 2 paramètres
+      const result = await uploadVideo(file, FREELANCE_ID);
 
-      // Nettoyer la référence globale
-      window.cancelCurrentVideoUpload = null;
+      window.cancelCurrentVideoUpload = undefined;
 
-      // Si l'utilisateur a annulé ou s'il n'y a pas de résultat, sortir
       if (isCancelled || !result) {
         return;
       }
@@ -590,6 +578,7 @@ const AddServiceManagement: React.FC = () => {
 
       // STEP 1: Créer le service (INSERT)
       if (currentStep === 1) {
+        // Dans handleNext, étape 1, corriger la structure des packages
         const serviceData = {
           freelance_id: FREELANCE_ID,
           title: formData.title,
@@ -597,15 +586,16 @@ const AddServiceManagement: React.FC = () => {
           subcategory: formData.subcategory,
           metadata: formData.metadata,
           tags: selectedTags,
-          packages: [
-            {
-              name: "Basic",
-              price: "",
-              deliveryDays: "",
-              revisions: "",
-              description: "",
-            },
-          ],
+          packages: formData.packages.map((pkg) => ({
+            name: pkg.name as "Basic" | "Standard" | "Premium",
+            price: pkg.price,
+            deliveryDays: pkg.deliveryDays,
+            revisions: pkg.revisions,
+            description: pkg.description,
+            features: pkg.features || [],
+            highlights: pkg.highlights || [],
+            popular: pkg.popular || false,
+          })),
           description: "",
           faq: [],
           requirements: [],
@@ -615,7 +605,6 @@ const AddServiceManagement: React.FC = () => {
           documents: [],
           statut: "en_attente" as const,
         };
-
         const nouveauService = await ajouterService(serviceData);
 
         if (nouveauService) {
@@ -1353,14 +1342,16 @@ const AddServiceManagement: React.FC = () => {
                           packages: [
                             ...formData.packages,
                             {
-                              name: names[formData.packages.length],
+                              name: ["Basic", "Standard", "Premium"][
+                                formData.packages.length
+                              ] as "Basic" | "Standard" | "Premium",
                               price: "",
                               deliveryDays: "",
                               revisions: "",
                               description: "",
-                              features: [], // ← AJOUTER
-                              highlights: [], // ← AJOUTER
-                              popular: false, // ← AJOUTER
+                              features: [],
+                              highlights: [],
+                              popular: false,
                             },
                           ],
                         });
@@ -2754,13 +2745,21 @@ const AddServiceManagement: React.FC = () => {
                               Sous-catégorie
                             </p>
                             <p className="text-gray-900">
-                              {formData.subcategory && formData.category
-                                ? categoriesData[
-                                    formData.category as keyof typeof categoriesData
-                                  ]?.subcategories?.[
-                                    formData.subcategory as string
-                                  ]?.label || "Non renseigné"
-                                : "Non renseigné"}
+                              {formData.category && formData.subcategory && (
+                                <div>
+                                  <p className="text-sm font-medium text-gray-600">
+                                    Sous-catégorie
+                                  </p>
+                                  <p className="text-gray-900">
+                                    {formData.subcategory && formData.category
+                                      ? (userCategories as any)[
+                                          formData.category
+                                        ]?.subcategories?.[formData.subcategory]
+                                          ?.label || "Non renseigné"
+                                      : "Non renseigné"}
+                                  </p>
+                                </div>
+                              )}
                             </p>
                           </div>
                           <div>

@@ -18,19 +18,19 @@ import { useFreelances } from "@/Context/Freelance/FreelanceContext";
 import { useAuth } from "@/Context/ContextUser";
 
 // Fonction de transformation identique à celle de ServiceDetailPage
-const transformPackages = (servicePackages) => {
+const transformPackages = (servicePackages: any) => {
   if (!servicePackages || servicePackages.length === 0) {
     return [];
   }
 
-  return servicePackages.map((pkg, index) => {
+  return servicePackages.map((pkg: any, index: any) => {
     const formattedDescription = pkg.description
       ? pkg.description.replace(/\\n/g, "\n")
       : `Package ${pkg.name}`;
 
     const allFeatures = [
       ...(pkg.highlights || []),
-      ...(pkg.features?.map((f) => f.label) || []),
+      ...(pkg.features?.map((f: any) => f.label) || []),
     ];
 
     return {
@@ -73,7 +73,7 @@ export default function CommandePage() {
   const service = useMemo(() => {
     if (!serviceId) return null;
     return getServiceById(serviceId);
-  }, [serviceId, getServiceById, services]);
+  }, [serviceId, getServiceById]);
 
   // Transformer les packages de la même manière que ServiceDetailPage
   const transformedPackages = useMemo(() => {
@@ -84,7 +84,7 @@ export default function CommandePage() {
   // Récupérer le forfait sélectionné avec la même logique d'ID
   const selectedPackage = useMemo(() => {
     if (!packageId) return null;
-    return transformedPackages.find((pkg) => pkg.id === packageId);
+    return transformedPackages.find((pkg: any) => pkg.id === packageId);
   }, [packageId, transformedPackages]);
 
   // Récupérer les infos du prestataire
@@ -137,7 +137,7 @@ export default function CommandePage() {
   const subTotal = basePrice * quantity;
   const total = subTotal + platformFees;
 
-  const handleClientInfoChange = (field, value) => {
+  const handleClientInfoChange = (field: any, value: any) => {
     setClientInfo((prev) => ({ ...prev, [field]: value }));
   };
 
@@ -343,17 +343,19 @@ export default function CommandePage() {
                       <p className="text-sm font-semibold text-gray-900">
                         Inclus:
                       </p>
-                      {selectedPackage.highlights.map((highlight, idx) => (
-                        <div
-                          key={idx}
-                          className="flex items-start gap-2 text-sm"
-                        >
-                          <span className="text-green-600 flex-shrink-0">
-                            ✓
-                          </span>
-                          <span className="text-gray-700">{highlight}</span>
-                        </div>
-                      ))}
+                      {selectedPackage.highlights.map(
+                        (highlight: any, idx: any) => (
+                          <div
+                            key={idx}
+                            className="flex items-start gap-2 text-sm"
+                          >
+                            <span className="text-green-600 flex-shrink-0">
+                              ✓
+                            </span>
+                            <span className="text-gray-700">{highlight}</span>
+                          </div>
+                        )
+                      )}
                     </div>
                   )}
               </div>
@@ -404,7 +406,7 @@ export default function CommandePage() {
                     </label>
                     <input
                       type="text"
-                      value={clientInfo[field.key]}
+                      value={clientInfo[field.key as keyof typeof clientInfo]}
                       onChange={(e) =>
                         handleClientInfoChange(field.key, e.target.value)
                       }
