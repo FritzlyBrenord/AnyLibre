@@ -1,3 +1,10 @@
 git add .
 git commit -m "corection"
 git push origin main
+
+//force
+git push origin main --force
+
+//revenir push original
+>> git fetch origin    
+>> git reset --hard origin/main
