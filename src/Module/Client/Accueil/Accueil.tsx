@@ -800,7 +800,7 @@ const Accueil = () => {
       </section>
 
       {/* Process Steps */}
-      <section className="py-20 bg-gradient-to-r from-green-600 to-blue-600 text-white">
+      <section className="py-20 bg-linear-to-r from-green-600 to-blue-600 text-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <h2 className="text-4xl font-bold mb-4">Comment Ça Marche ?</h2>
@@ -916,7 +916,7 @@ const Accueil = () => {
                           className="w-24 h-24 rounded-full mx-auto object-cover"
                         />
                       ) : (
-                        <div className="w-24 h-24 rounded-full mx-auto bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center">
+                        <div className="w-24 h-24 rounded-full mx-auto bg-linear-to-br from-blue-400 to-purple-500 flex items-center justify-center">
                           <User className="w-12 h-12 text-white" />
                         </div>
                       )}
@@ -983,7 +983,7 @@ const Accueil = () => {
       )}
 
       {/* CTA Section */}
-      <section className="py-20 bg-gradient-to-r from-green-600 to-blue-600 text-white">
+      <section className="py-20 bg-linear-to-r from-green-600 to-blue-600 text-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
             <h2 className="text-4xl font-bold mb-6">

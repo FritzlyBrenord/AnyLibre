@@ -558,7 +558,7 @@ const FreelanceRegistrationForm: React.FC = () => {
         certifications: formData.certifications,
         sites_web: formData.websites,
         statut: "actif" as const,
-        id_user: currentSession.user.id,
+        id_user: currentSession?.user?.id,
       };
 
       await ajouterFreelance(dataToSubmit);
@@ -589,7 +589,7 @@ const FreelanceRegistrationForm: React.FC = () => {
   // Modal de Bienvenue
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-yellow-50 py-8">
+    <div className="min-h-screen bg-linear-to-br from-blue-50 to-yellow-50 py-8">
       <WelcomeModal
         formData={formData}
         showWelcomeModal={showWelcomeModal}

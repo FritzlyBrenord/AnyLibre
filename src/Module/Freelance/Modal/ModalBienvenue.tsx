@@ -47,7 +47,7 @@ export default function OnboardingModal({ isOpen, onClose }: any) {
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50 backdrop-blur-sm animate-fadeIn">
       <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto animate-slideUp">
         {/* Header */}
-        <div className="relative bg-gradient-to-r from-blue-600 to-purple-600 p-8 text-white rounded-t-2xl">
+        <div className="relative bg-linear-to-r from-blue-600 to-purple-600 p-8 text-white rounded-t-2xl">
           <button
             onClick={onClose}
             className="absolute top-4 right-4 p-2 hover:bg-white/20 rounded-full transition-colors"
@@ -98,7 +98,7 @@ export default function OnboardingModal({ isOpen, onClose }: any) {
             </div>
             <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
               <div
-                className="bg-gradient-to-r from-blue-600 to-purple-600 h-3 rounded-full transition-all duration-500 ease-out"
+                className="bg-linear-to-r from-blue-600 to-purple-600 h-3 rounded-full transition-all duration-500 ease-out"
                 style={{ width: `${progressPercentage}%` }}
               />
             </div>
@@ -122,7 +122,7 @@ export default function OnboardingModal({ isOpen, onClose }: any) {
                         : "bg-gray-50 border-gray-200 hover:border-gray-300 hover:bg-gray-100"
                     }`}
                   >
-                    <div className="flex-shrink-0">
+                    <div className="shrink-0">
                       {item.completed ? (
                         <CheckCircle2 className="w-6 h-6 text-green-600" />
                       ) : (
@@ -159,7 +159,7 @@ export default function OnboardingModal({ isOpen, onClose }: any) {
 
           {/* Call to Action Buttons */}
           <div className="space-y-3">
-            <button className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-4 px-6 rounded-xl font-semibold text-lg hover:shadow-lg transform hover:scale-[1.02] transition-all duration-200 flex items-center justify-center gap-3">
+            <button className="w-full bg-linear-to-r from-blue-600 to-purple-600 text-white py-4 px-6 rounded-xl font-semibold text-lg hover:shadow-lg transform hover:scale-[1.02] transition-all duration-200 flex items-center justify-center gap-3">
               <User className="w-6 h-6" />
               Compléter mon profil
             </button>

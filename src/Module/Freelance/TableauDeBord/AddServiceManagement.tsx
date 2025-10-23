@@ -838,7 +838,7 @@ const AddServiceManagement: React.FC = () => {
                   <div className="bg-blue-50 border-l-4 border-blue-600 p-4 rounded">
                     <div className="flex">
                       <Info
-                        className="text-blue-600 mr-3 flex-shrink-0 mt-0.5"
+                        className="text-blue-600 mr-3 shrink-0 mt-0.5"
                         size={20}
                       />
                       <div>
@@ -1128,7 +1128,7 @@ const AddServiceManagement: React.FC = () => {
                   <div className="bg-yellow-50 border-l-4 border-yellow-600 p-4 rounded">
                     <div className="flex">
                       <Lightbulb
-                        className="text-yellow-600 mr-3 flex-shrink-0 mt-0.5"
+                        className="text-yellow-600 mr-3 shrink-0 mt-0.5"
                         size={20}
                       />
                       <div>
@@ -1440,7 +1440,7 @@ const AddServiceManagement: React.FC = () => {
                   <div className="bg-blue-50 border-l-4 border-blue-600 p-4 rounded">
                     <div className="flex">
                       <svg
-                        className="w-5 h-5 text-blue-600 mr-3 flex-shrink-0 mt-0.5"
+                        className="w-5 h-5 text-blue-600 mr-3 shrink-0 mt-0.5"
                         fill="currentColor"
                         viewBox="0 0 20 20"
                       >
@@ -1480,7 +1480,7 @@ const AddServiceManagement: React.FC = () => {
                             >
                               <div className="flex items-center gap-3 flex-1 min-w-0">
                                 <svg
-                                  className={`w-5 h-5 text-gray-500 flex-shrink-0 transition-transform ${
+                                  className={`w-5 h-5 text-gray-500 shrink-0 transition-transform ${
                                     item.isOpen ? "rotate-90" : ""
                                   }`}
                                   fill="none"
@@ -2329,7 +2329,7 @@ const AddServiceManagement: React.FC = () => {
                     <div className="bg-blue-50 border-l-4 border-blue-600 p-4 rounded mb-4">
                       <div className="flex">
                         <Info
-                          className="text-blue-600 mr-3 flex-shrink-0 mt-0.5"
+                          className="text-blue-600 mr-3 shrink-0 mt-0.5"
                           size={20}
                         />
                         <div>
@@ -2437,7 +2437,7 @@ const AddServiceManagement: React.FC = () => {
                             </div>
                             <div className="w-full bg-gray-200 rounded-full h-3">
                               <div
-                                className="bg-gradient-to-r from-blue-500 to-blue-600 h-3 rounded-full transition-all duration-300"
+                                className="bg-linear-to-r from-blue-500 to-blue-600 h-3 rounded-full transition-all duration-300"
                                 style={{
                                   width: `${videoCompressionProgress}%`,
                                 }}
@@ -2468,7 +2468,7 @@ const AddServiceManagement: React.FC = () => {
                             </div>
                             <div className="w-full bg-gray-200 rounded-full h-3">
                               <div
-                                className="bg-gradient-to-r from-green-500 to-green-600 h-3 rounded-full transition-all duration-300"
+                                className="bg-linear-to-r from-green-500 to-green-600 h-3 rounded-full transition-all duration-300"
                                 style={{ width: `${videoUploadProgress}%` }}
                               />
                             </div>
@@ -2488,7 +2488,7 @@ const AddServiceManagement: React.FC = () => {
                       <div className="mt-4 bg-red-50 border-l-4 border-red-600 p-4 rounded">
                         <div className="flex">
                           <AlertCircle
-                            className="text-red-600 mr-3 flex-shrink-0"
+                            className="text-red-600 mr-3 shrink-0"
                             size={20}
                           />
                           <div>
@@ -2691,7 +2691,7 @@ const AddServiceManagement: React.FC = () => {
                   <div className="bg-green-50 border-l-4 border-green-600 p-4 rounded">
                     <div className="flex">
                       <Check
-                        className="text-green-600 mr-3 flex-shrink-0 mt-0.5"
+                        className="text-green-600 mr-3 shrink-0 mt-0.5"
                         size={20}
                       />
                       <div>
@@ -3017,7 +3017,7 @@ const AddServiceManagement: React.FC = () => {
                   <div className="bg-yellow-50 border-l-4 border-yellow-600 p-4 rounded">
                     <div className="flex">
                       <AlertCircle
-                        className="text-yellow-600 mr-3 flex-shrink-0 mt-0.5"
+                        className="text-yellow-600 mr-3 shrink-0 mt-0.5"
                         size={20}
                       />
                       <div>
@@ -3161,7 +3161,7 @@ const AddServiceManagement: React.FC = () => {
                 </div>
               </div>
 
-              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg shadow-sm border border-blue-200 p-5">
+              <div className="bg-linear-to-br from-blue-50 to-indigo-50 rounded-lg shadow-sm border border-blue-200 p-5">
                 <div className="flex items-center mb-3">
                   <Lightbulb className="text-yellow-600 mr-2" size={24} />
                   <h3 className="font-bold text-gray-900">Conseils</h3>
@@ -3169,7 +3169,7 @@ const AddServiceManagement: React.FC = () => {
                 <ul className="space-y-3">
                   {currentGuide.tips.map((tip: string, index: number) => (
                     <li key={index} className="flex items-start text-sm">
-                      <span className="text-green-600 mr-2 flex-shrink-0 mt-0.5">
+                      <span className="text-green-600 mr-2 shrink-0 mt-0.5">
                         ✓
                       </span>
                       <span className="text-gray-700">{tip}</span>

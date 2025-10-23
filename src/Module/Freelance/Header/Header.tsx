@@ -146,7 +146,11 @@ const Header = () => {
   const router = useRouter();
   const { currentSession, Logout } = useAuth();
   const { getUserFreelance, getPhotoProfileUrl } = useFreelances();
-  const { conversations, loading } = useMessaging();
+  const {
+    conversations,
+    loading: messagesLoading,
+    RefreshConversations,
+  } = useMessaging();
 
   // États pour les menus déroulants
   const [showUserMenu, setShowUserMenu] = useState(false);
@@ -161,9 +165,16 @@ const Header = () => {
   const userId = currentSession?.userProfile?.id;
   const freelanceData = userId ? getUserFreelance(userId) : false;
 
+  // Rafraîchir les conversations quand le menu messages s'ouvre
+  useEffect(() => {
+    if (showMessages && currentSession.isAuthenticated) {
+      RefreshConversations();
+    }
+  }, [showMessages, currentSession.isAuthenticated, RefreshConversations]);
+
   // Calculer le nombre total de messages non lus
   const unreadCount = conversations.reduce(
-    (total, conv) => total + (conv.unread_count || 0),
+    (total, conv) => total + (conv.unreadCount || 0),
     0
   );
 
@@ -196,7 +207,23 @@ const Header = () => {
 
   // Récupérer les conversations récentes pour le dropdown
   const recentConversations = conversations
-    .filter((conv) => !conv.is_archived && !conv.is_spam)
+    .filter((conv) => {
+      const currentUserId = currentSession?.userProfile?.id;
+      if (!currentUserId) return false;
+
+      // Déterminer si l'utilisateur connecté est user1 ou user2
+      const isUser1 = conv.user1_id === currentUserId;
+
+      // Utiliser les champs spécifiques à l'utilisateur connecté
+      const isArchived = isUser1
+        ? conv.is_archived_user1
+        : conv.is_archived_user2;
+      const isSpam = isUser1 ? conv.is_spam_user1 : conv.is_spam_user2;
+      const isDeleted = isUser1 ? conv.is_deleted_user1 : conv.is_deleted_user2;
+
+      // Filtrer les conversations non archivées, non spam et non supprimées
+      return !isArchived && !isSpam && !isDeleted;
+    })
     .sort(
       (a, b) =>
         Number(new Date(b.last_message_at)) -
@@ -311,7 +338,7 @@ const Header = () => {
         }}
       >
         <div className="flex gap-3">
-          <div className="relative flex-shrink-0">
+          <div className="relative shrink-0">
             {userInfo.photo ? (
               <img
                 src={userInfo.photo}
@@ -319,7 +346,7 @@ const Header = () => {
                 className="w-12 h-12 rounded-full border-2 border-white shadow object-cover"
               />
             ) : (
-              <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full border-2 border-white shadow flex items-center justify-center text-white text-sm font-medium">
+              <div className="w-12 h-12 bg-linear-to-r from-blue-500 to-purple-500 rounded-full border-2 border-white shadow flex items-center justify-center text-white text-sm font-medium">
                 {(
                   userInfo.nom.charAt(0) + userInfo.prenom.charAt(0)
                 ).toUpperCase() || "U"}
@@ -340,7 +367,7 @@ const Header = () => {
               >
                 {userInfo.nom} {userInfo.prenom}
               </h4>
-              <span className="text-xs text-gray-500 flex-shrink-0">
+              <span className="text-xs text-gray-500 shrink-0">
                 {conversation.last_message_at
                   ? formatMessageTime(conversation.last_message_at)
                   : ""}
@@ -353,7 +380,7 @@ const Header = () => {
                   : "text-gray-600"
               }`}
             >
-              {conversation.last_message?.content || "Aucun message"}
+              {conversation.lastMessage?.content || "Aucun message"}
             </p>
           </div>
         </div>
@@ -811,9 +838,9 @@ const Header = () => {
                 </button>
 
                 {showNotifications && (
-                  <div className="absolute right-0 mt-2 w-screen max-w-md lg:w-96 bg-white rounded-lg shadow-2xl border border-gray-200 max-h-[85vh] lg:max-h-[32rem] overflow-hidden flex flex-col">
+                  <div className="absolute right-0 mt-2 w-screen max-w-md lg:w-96 bg-white rounded-lg shadow-2xl border border-gray-200 max-h-[85vh] lg:max-h-128 overflow-hidden flex flex-col">
                     {/* Header */}
-                    <div className="p-3 lg:p-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-purple-50 flex-shrink-0">
+                    <div className="p-3 lg:p-4 border-b border-gray-200 bg-linear-to-r from-blue-50 to-purple-50 shrink-0">
                       <div className="flex items-center justify-between">
                         <h3 className="font-bold text-gray-900 text-lg">
                           Notifications
@@ -841,7 +868,7 @@ const Header = () => {
                           >
                             <div className="flex gap-3">
                               <div
-                                className={`w-10 h-10 rounded-full ${notif.color} flex items-center justify-center flex-shrink-0`}
+                                className={`w-10 h-10 rounded-full ${notif.color} flex items-center justify-center shrink-0`}
                               >
                                 {notif.type === "order" && (
                                   <Package className="w-5 h-5" />
@@ -862,7 +889,7 @@ const Header = () => {
                                     {notif.title}
                                   </h4>
                                   {!notif.read && (
-                                    <div className="w-2 h-2 bg-blue-600 rounded-full flex-shrink-0 mt-1"></div>
+                                    <div className="w-2 h-2 bg-blue-600 rounded-full shrink-0 mt-1"></div>
                                   )}
                                 </div>
                                 <p className="text-sm text-gray-600 mt-1 line-clamp-2">
@@ -892,7 +919,7 @@ const Header = () => {
 
                     {/* Footer */}
                     {notifications.length > 0 && (
-                      <div className="p-3 border-t border-gray-200 bg-gray-50 flex-shrink-0">
+                      <div className="p-3 border-t border-gray-200 bg-gray-50 shrink-0">
                         <button className="w-full text-center text-sm text-blue-600 hover:text-blue-700 font-semibold py-2">
                           Voir toutes les notifications
                         </button>
@@ -924,15 +951,21 @@ const Header = () => {
                 </button>
 
                 {showMessages && (
-                  <div className="absolute right-0 mt-2 w-screen max-w-md lg:w-96 bg-white rounded-lg shadow-2xl border border-gray-200 max-h-[85vh] lg:max-h-[32rem] overflow-hidden flex flex-col">
+                  <div className="absolute right-0 mt-2 w-screen max-w-md lg:w-96 bg-white rounded-lg shadow-2xl border border-gray-200 max-h-[85vh] lg:max-h-128 overflow-hidden flex flex-col">
                     {/* Header */}
-                    <div className="p-3 lg:p-4 border-b border-gray-200 bg-gradient-to-r from-green-50 to-blue-50 flex-shrink-0">
+                    <div className="p-3 lg:p-4 border-b border-gray-200 bg-linear-to-r from-green-50 to-blue-50 shrink-0">
                       <div className="flex items-center justify-between">
                         <h3 className="font-bold text-gray-900 text-lg">
                           Messages
                         </h3>
                         {recentConversations.length > 0 && (
-                          <button className="text-sm text-green-600 hover:text-green-700 font-semibold">
+                          <button
+                            className="text-sm text-green-600 hover:text-green-700 font-semibold"
+                            onClick={() => {
+                              router.push("/Message");
+                              setShowMessages(false);
+                            }}
+                          >
                             Voir tout
                           </button>
                         )}
@@ -944,7 +977,7 @@ const Header = () => {
                       className="flex-1 overflow-y-auto overscroll-contain"
                       style={{ WebkitOverflowScrolling: "touch" }}
                     >
-                      {loading ? (
+                      {messagesLoading ? (
                         <div className="p-12 text-center">
                           <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                             <MessageSquare className="w-8 h-8 text-gray-400" />
@@ -980,7 +1013,7 @@ const Header = () => {
 
                     {/* Footer */}
                     {recentConversations.length > 0 && (
-                      <div className="p-3 border-t border-gray-200 bg-gray-50 flex-shrink-0">
+                      <div className="p-3 border-t border-gray-200 bg-gray-50 shrink-0">
                         <button
                           className="w-full text-center text-sm text-green-600 hover:text-green-700 font-semibold py-2"
                           onClick={() => {
@@ -1026,7 +1059,7 @@ const Header = () => {
                     <div className="p-4 lg:p-6 border-b border-gray-200">
                       <div className="flex items-center gap-3 lg:gap-4 mb-3 lg:mb-4">
                         <div className="relative">
-                          <div className="w-20 h-20 rounded-full overflow-hidden border-4 border-gray-100 flex-shrink-0 relative">
+                          <div className="w-20 h-20 rounded-full overflow-hidden border-4 border-gray-100 shrink-0 relative">
                             <img
                               src={userData.avatar}
                               alt={userData.name}

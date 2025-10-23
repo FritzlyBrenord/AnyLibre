@@ -720,7 +720,7 @@ const RechercheServices: React.FC = () => {
         <div className="flex flex-col lg:flex-row gap-8">
           {/* Sidebar des filtres */}
           <div
-            className={`lg:w-80 flex-shrink-0 ${
+            className={`lg:w-80 shrink-0 ${
               showFilters ? "block" : "hidden lg:block"
             }`}
           >

@@ -279,7 +279,7 @@ const FreelancerProfile = () => {
   return (
     <div className="min-h-screen bg-white">
       {/* En-tête du profil */}
-      <header className="pt-20 pb-12 bg-gradient-to-br from-gray-200 via-yellow-50 to-yellow-100">
+      <header className="pt-20 pb-12 bg-linear-to-br from-gray-200 via-yellow-50 to-yellow-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col lg:flex-row items-start lg:items-center gap-8">
             {/* Avatar avec effet glassmorphism */}
@@ -447,7 +447,7 @@ const FreelancerProfile = () => {
                   key={project.id}
                   className="group bg-white rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-500 border-2 border-gray-200 hover:border-blue-300"
                 >
-                  <div className="aspect-video w-full overflow-hidden bg-gradient-to-br from-gray-100 to-blue-100">
+                  <div className="aspect-video w-full overflow-hidden bg-linear-to-br from-gray-100 to-blue-100">
                     <img
                       src={project.image}
                       alt={project.title}
@@ -487,7 +487,7 @@ const FreelancerProfile = () => {
                 {/* Description */}
                 <div className="bg-white rounded-2xl p-8 shadow-sm border-2 border-gray-200">
                   <h3 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
-                    <span className="w-2 h-8 bg-gradient-to-b from-blue-300 to-blue-400 rounded-full"></span>
+                    <span className="w-2 h-8 bg-linear-to-b from-blue-300 to-blue-400 rounded-full"></span>
                     Mon parcours
                   </h3>
                   <p className="text-gray-700 leading-relaxed text-lg">
@@ -499,7 +499,7 @@ const FreelancerProfile = () => {
                 {freelance.formations && freelance.formations.length > 0 && (
                   <div className="bg-white rounded-2xl p-8 shadow-sm border-2 border-gray-200">
                     <h3 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
-                      <span className="w-2 h-8 bg-gradient-to-b from-blue-300 to-blue-400 rounded-full"></span>
+                      <span className="w-2 h-8 bg-linear-to-b from-blue-300 to-blue-400 rounded-full"></span>
                       Formation
                     </h3>
                     <div className="space-y-6">
@@ -508,7 +508,7 @@ const FreelancerProfile = () => {
                           <div key={index} className="flex gap-4 group">
                             <div className="flex flex-col items-center">
                               <div className="w-3 h-3 bg-blue-400 rounded-full group-hover:scale-150 transition-transform duration-300"></div>
-                              <div className="w-0.5 h-full bg-gradient-to-b from-blue-200 to-gray-200 mt-1"></div>
+                              <div className="w-0.5 h-full bg-linear-to-b from-blue-200 to-gray-200 mt-1"></div>
                             </div>
                             <div className="flex-1 pb-6">
                               <h4 className="font-bold text-gray-900 text-lg">
@@ -531,7 +531,7 @@ const FreelancerProfile = () => {
                   freelance.certifications.length > 0 && (
                     <div className="bg-white rounded-2xl p-8 shadow-sm border-2 border-gray-200">
                       <h3 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
-                        <span className="w-2 h-8 bg-gradient-to-b from-blue-300 to-blue-400 rounded-full"></span>
+                        <span className="w-2 h-8 bg-linear-to-b from-blue-300 to-blue-400 rounded-full"></span>
                         Certifications
                       </h3>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -539,7 +539,7 @@ const FreelancerProfile = () => {
                           (certification: Certification, index: number) => (
                             <div
                               key={index}
-                              className="bg-gradient-to-br from-blue-100 to-blue-200 rounded-xl p-4 border-2 border-blue-300"
+                              className="bg-linear-to-br from-blue-100 to-blue-200 rounded-xl p-4 border-2 border-blue-300"
                             >
                               <h4 className="font-bold text-gray-900">
                                 {certification.nom}
@@ -577,7 +577,7 @@ const FreelancerProfile = () => {
                             </div>
                             <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
                               <div
-                                className="bg-gradient-to-r from-blue-300 to-blue-400 h-2 rounded-full transition-all duration-1000 ease-out group-hover:from-blue-400 group-hover:to-yellow-400"
+                                className="bg-linear-to-r from-blue-300 to-blue-400 h-2 rounded-full transition-all duration-1000 ease-out group-hover:from-blue-400 group-hover:to-yellow-400"
                                 style={{ width: `${90 + (index % 10)}%` }}
                               ></div>
                             </div>
@@ -662,7 +662,7 @@ const FreelancerProfile = () => {
       </main>
 
       {/* Pied de page */}
-      <footer className="bg-gradient-to-br from-gray-100 to-gray-200 mt-16">
+      <footer className="bg-linear-to-br from-gray-100 to-gray-200 mt-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
           <div className="flex flex-col items-center justify-center text-center space-y-4">
             <div className="w-20 h-20 bg-white backdrop-blur-lg rounded-2xl flex items-center justify-center text-2xl font-bold border-2 border-blue-400 text-blue-400">

@@ -36,6 +36,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useFreelances } from "@/Context/Freelance/FreelanceContext";
 import { useServices, Package } from "@/Context/Freelance/ContextService";
 import PoserUneQuestion from "../PoserUneQuestion/PoserUneQuestion";
+import getDefaultServiceImage from "@/Component/Data/ImageDefault/ImageParDefaut";
 
 // ==================== INTERFACES ====================
 
@@ -181,7 +182,7 @@ const OrderSummaryModal: React.FC<OrderSummaryModalProps> = ({
                 <div className="space-y-1">
                   {selectedPackage.highlights.map((highlight, idx) => (
                     <div key={idx} className="flex items-start text-sm">
-                      <CheckCircle className="h-4 w-4 text-green-500 mr-2 mt-0.5 flex-shrink-0" />
+                      <CheckCircle className="h-4 w-4 text-green-500 mr-2 mt-0.5 shrink-0" />
                       <span className="text-gray-700">{highlight}</span>
                     </div>
                   ))}
@@ -386,6 +387,7 @@ const ServiceDetailPage = () => {
   const currentPackage = serviceData?.packages[selectedPackageIndex];
 
   // ==================== MEDIA HANDLING ====================
+  // ==================== MEDIA HANDLING ====================
 
   const medias = useMemo(() => {
     if (!service) return [];
@@ -397,11 +399,26 @@ const ServiceDetailPage = () => {
 
     if (service.images && service.images.length > 0) {
       service.images.forEach((image, index) => {
+        // CORRECTION : Utiliser l'image par défaut si l'URL est invalide
+        const imageUrl =
+          image.url && image.url.trim() !== ""
+            ? image.url
+            : getDefaultServiceImage(service.category, service.subcategory);
+
         mediaArray.push({
           type: "image",
-          url: image.url,
+          url: imageUrl,
           id: image.id || `image-${index}`,
         });
+      });
+    }
+
+    // CORRECTION : Ajouter une image par défaut si aucune image n'existe
+    if (mediaArray.length === 0) {
+      mediaArray.push({
+        type: "image",
+        url: getDefaultServiceImage(service.category, service.subcategory),
+        id: "default-image",
       });
     }
 
@@ -552,6 +569,14 @@ const ServiceDetailPage = () => {
                         src={currentMedia.url}
                         alt={service.title}
                         className="w-full aspect-video object-cover"
+                        onError={(e) => {
+                          // CORRECTION : Remplacer par l'image par défaut en cas d'erreur
+                          const target = e.target as HTMLImageElement;
+                          target.src = getDefaultServiceImage(
+                            service.category,
+                            service.subcategory
+                          );
+                        }}
                       />
                     )}
                   </>
@@ -656,7 +681,7 @@ const ServiceDetailPage = () => {
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-4">
                   <div className="relative">
-                    <div className="w-14 h-14 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white font-bold text-lg overflow-hidden">
+                    <div className="w-14 h-14 rounded-full bg-linear-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white font-bold text-lg overflow-hidden">
                       {serviceData.seller.avatar ? (
                         <img
                           src={serviceData.seller.avatar}
@@ -706,7 +731,7 @@ const ServiceDetailPage = () => {
                 À propos de ce service
               </h2>
               <div
-                className="text-gray-700 text-lg mb-6 max-w-full break-words"
+                className="text-gray-700 text-lg mb-6 max-w-full wrap-break-word"
                 dangerouslySetInnerHTML={{ __html: serviceData.description }}
               />
 
@@ -823,7 +848,7 @@ const ServiceDetailPage = () => {
                       className="border-b border-gray-100 pb-6 last:border-b-0"
                     >
                       <div className="flex items-start space-x-4">
-                        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white font-semibold overflow-hidden">
+                        <div className="w-12 h-12 rounded-full bg-linear-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white font-semibold overflow-hidden">
                           {review.avatar ? (
                             <img
                               src={review.avatar}
@@ -967,7 +992,7 @@ const ServiceDetailPage = () => {
                       </h4>
                       {currentPackage.highlights.map((highlight, idx) => (
                         <div key={idx} className="flex items-start">
-                          <CheckCircle className="h-5 w-5 text-green-500 mr-3 mt-0.5 flex-shrink-0" />
+                          <CheckCircle className="h-5 w-5 text-green-500 mr-3 mt-0.5 shrink-0" />
                           <span className="text-gray-700">{highlight}</span>
                         </div>
                       ))}
@@ -998,7 +1023,7 @@ const ServiceDetailPage = () => {
               <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
                 <div className="flex items-center space-x-4 mb-6">
                   <div className="relative">
-                    <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white font-bold text-xl overflow-hidden">
+                    <div className="w-16 h-16 rounded-full bg-linear-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white font-bold text-xl overflow-hidden">
                       {serviceData.seller.avatar ? (
                         <img
                           src={serviceData.seller.avatar}

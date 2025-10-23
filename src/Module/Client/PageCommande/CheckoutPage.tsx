@@ -287,7 +287,7 @@ export default function CommandePage() {
                   {/* Prestataire */}
                   {provider && (
                     <div className="flex items-center gap-3 pt-4 border-t">
-                      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white font-bold overflow-hidden flex-shrink-0">
+                      <div className="w-12 h-12 rounded-full bg-linear-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white font-bold overflow-hidden shrink-0">
                         {provider.photo_url ? (
                           <img
                             src={getPhotoProfileUrl(provider.photo_url)}
@@ -349,9 +349,7 @@ export default function CommandePage() {
                             key={idx}
                             className="flex items-start gap-2 text-sm"
                           >
-                            <span className="text-green-600 flex-shrink-0">
-                              ✓
-                            </span>
+                            <span className="text-green-600 shrink-0">✓</span>
                             <span className="text-gray-700">{highlight}</span>
                           </div>
                         )
@@ -494,7 +492,7 @@ export default function CommandePage() {
               <div className="space-y-3">
                 <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
                   <div className="flex gap-3">
-                    <Shield className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
+                    <Shield className="w-5 h-5 text-green-600 shrink-0 mt-0.5" />
                     <div>
                       <h3 className="font-semibold text-green-900 mb-1">
                         Paiement sécurisé
@@ -509,7 +507,7 @@ export default function CommandePage() {
 
                 <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
                   <div className="flex gap-3">
-                    <Lock className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                    <Lock className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
                     <div>
                       <h3 className="font-semibold text-blue-900 mb-1">
                         Protection acheteur
@@ -619,15 +617,15 @@ export default function CommandePage() {
               {/* Garanties */}
               <div className="space-y-3 text-sm">
                 <div className="flex items-start gap-2 text-gray-600">
-                  <Shield className="w-4 h-4 text-green-500 mt-0.5 flex-shrink-0" />
+                  <Shield className="w-4 h-4 text-green-500 mt-0.5 shrink-0" />
                   <span>Garantie satisfait ou remboursé 14 jours</span>
                 </div>
                 <div className="flex items-start gap-2 text-gray-600">
-                  <Lock className="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" />
+                  <Lock className="w-4 h-4 text-blue-500 mt-0.5 shrink-0" />
                   <span>Paiement sécurisé crypté</span>
                 </div>
                 <div className="flex items-start gap-2 text-gray-600">
-                  <Star className="w-4 h-4 text-yellow-500 mt-0.5 flex-shrink-0" />
+                  <Star className="w-4 h-4 text-yellow-500 mt-0.5 shrink-0" />
                   <span>Support client 24h/24</span>
                 </div>
               </div>

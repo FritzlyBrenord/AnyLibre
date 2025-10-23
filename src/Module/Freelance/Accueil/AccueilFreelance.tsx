@@ -188,8 +188,8 @@ const BecomeFrelancePage = () => {
       {/* Header */}
 
       {/* Hero Banner */}
-      <section className="bg-gradient-to-br from-yellow-50 via-white to-blue-50 py-20 relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-r from-yellow-100/30 to-blue-100/30"></div>
+      <section className="bg-linear-to-br from-yellow-50 via-white to-blue-50 py-20 relative overflow-hidden">
+        <div className="absolute inset-0 bg-linear-to-r from-yellow-100/30 to-blue-100/30"></div>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             {/* Left Content */}
@@ -245,7 +245,7 @@ const BecomeFrelancePage = () => {
             {/* Right Content - Visual */}
             <div className="relative">
               <div className="bg-white rounded-2xl shadow-2xl p-8 transform rotate-2 hover:rotate-0 transition-transform duration-300">
-                <div className="bg-gradient-to-r from-green-400 to-blue-500 rounded-lg p-6 text-white mb-6">
+                <div className="bg-linear-to-r from-green-400 to-blue-500 rounded-lg p-6 text-white mb-6">
                   <h3 className="text-2xl font-bold mb-2">€4,850</h3>
                   <p className="text-green-100">Revenus ce mois</p>
                 </div>
@@ -375,7 +375,7 @@ const BecomeFrelancePage = () => {
 
       {/* Features & Advantages */}
       <section
-        className="py-20 bg-gradient-to-br from-blue-50 to-yellow-50"
+        className="py-20 bg-linear-to-br from-blue-50 to-yellow-50"
         id="avantages"
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -417,7 +417,7 @@ const BecomeFrelancePage = () => {
             </p>
           </div>
 
-          <div className="bg-gradient-to-r from-gray-50 to-blue-50 rounded-2xl p-8 md:p-12">
+          <div className="bg-linear-to-r from-gray-50 to-blue-50 rounded-2xl p-8 md:p-12">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
               <div className="text-center">
                 <div className="bg-red-500 text-white rounded-lg p-4 mb-4">
@@ -441,7 +441,7 @@ const BecomeFrelancePage = () => {
                 <p className="text-gray-600">1,000€ - 10,000€ de ventes</p>
               </div>
               <div className="text-center">
-                <div className="bg-gradient-to-r from-purple-500 to-purple-600 text-white rounded-lg p-4 mb-4">
+                <div className="bg-linear-to-r from-purple-500 to-purple-600 text-white rounded-lg p-4 mb-4">
                   <h3 className="text-lg font-semibold">Top Seller</h3>
                   <div className="text-3xl font-bold mt-2">5%</div>
                 </div>
@@ -491,15 +491,9 @@ const BecomeFrelancePage = () => {
                     {faq.question}
                   </h3>
                   {openFaq === index ? (
-                    <ChevronUp
-                      className="text-gray-500 flex-shrink-0"
-                      size={24}
-                    />
+                    <ChevronUp className="text-gray-500 shrink-0" size={24} />
                   ) : (
-                    <ChevronDown
-                      className="text-gray-500 flex-shrink-0"
-                      size={24}
-                    />
+                    <ChevronDown className="text-gray-500 shrink-0" size={24} />
                   )}
                 </button>
                 {openFaq === index && (
@@ -523,7 +517,7 @@ const BecomeFrelancePage = () => {
       </section>
 
       {/* Community Section */}
-      <section className="py-20 bg-gradient-to-r from-purple-600 to-blue-600">
+      <section className="py-20 bg-linear-to-r from-purple-600 to-blue-600">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h2 className="text-3xl md:text-4xl font-bold text-white mb-6">
             Rejoignez une communauté de{" "}
@@ -546,7 +540,7 @@ const BecomeFrelancePage = () => {
       </section>
 
       {/* Final CTA */}
-      <section className="py-20 bg-gradient-to-r from-yellow-400 to-yellow-500">
+      <section className="py-20 bg-linear-to-r from-yellow-400 to-yellow-500">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-6">
             Prêt à transformer vos compétences en revenus ?

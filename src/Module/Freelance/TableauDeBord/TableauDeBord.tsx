@@ -130,7 +130,7 @@ export default function FiverrStyleDashboard() {
           </div>
 
           <div className="p-6 space-y-6">
-            <div className="bg-gradient-to-r from-green-50 to-blue-50 p-4 rounded-lg">
+            <div className="bg-linear-to-r from-green-50 to-blue-50 p-4 rounded-lg">
               <p className="text-sm text-gray-600 mb-1">Solde disponible</p>
               <p className="text-3xl font-bold text-gray-900">
                 {userData.balance.toFixed(2)} €
@@ -394,7 +394,7 @@ export default function FiverrStyleDashboard() {
           {/* Profil */}
           <div className="text-center">
             <div className="flex lg:block items-center lg:justify-center gap-4 lg:gap-0">
-              <div className="relative inline-block flex-shrink-0">
+              <div className="relative inline-block shrink-0">
                 <img
                   src={userData.avatar}
                   alt={userData.name}
@@ -472,7 +472,7 @@ export default function FiverrStyleDashboard() {
           </div>
 
           {/* Gains - Ajouté */}
-          <div className="bg-gradient-to-br from-green-50 to-blue-50 p-5 rounded-xl border border-green-200">
+          <div className="bg-linear-to-br from-green-50 to-blue-50 p-5 rounded-xl border border-green-200">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-sm font-semibold text-gray-700">Mes gains</h3>
               <button
@@ -531,7 +531,7 @@ export default function FiverrStyleDashboard() {
             {/* Alert - Vérifier vos informations */}
             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 lg:p-6 mb-4 lg:mb-6 flex flex-col sm:flex-row items-start gap-4">
               <div className="flex items-start gap-3 lg:gap-4 flex-1">
-                <AlertTriangle className="w-5 h-5 lg:w-6 lg:h-6 text-yellow-600 flex-shrink-0 mt-0.5" />
+                <AlertTriangle className="w-5 h-5 lg:w-6 lg:h-6 text-yellow-600 shrink-0 mt-0.5" />
                 <div className="flex-1">
                   <h3 className="font-bold text-gray-900 mb-1 text-sm lg:text-base">
                     Vérifier vos informations
@@ -542,7 +542,7 @@ export default function FiverrStyleDashboard() {
                   </p>
                 </div>
               </div>
-              <button className="w-full sm:w-auto px-4 lg:px-6 py-2 bg-gray-900 text-white rounded-lg font-semibold hover:bg-gray-800 text-sm lg:text-base flex-shrink-0">
+              <button className="w-full sm:w-auto px-4 lg:px-6 py-2 bg-gray-900 text-white rounded-lg font-semibold hover:bg-gray-800 text-sm lg:text-base shrink-0">
                 Vérifier
               </button>
             </div>

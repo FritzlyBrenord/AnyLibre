@@ -405,7 +405,7 @@ const FreelanceProfileEditor = () => {
 
   return (
     <div>
-      <div className="min-h-screen bg-gradient-to-br  py-8">
+      <div className="min-h-screen bg-linear-to-br  py-8">
         <div className="max-w-7xl mx-auto px-4">
           {/* Messages de notification */}
           {saveMessage && (
@@ -442,7 +442,7 @@ const FreelanceProfileEditor = () => {
                   {/* Photo de profil avec upload */}
                   <div className="relative group">
                     {freelance.photo_url ? (
-                      <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-gray-100 flex-shrink-0 relative">
+                      <div className="w-24 h-24 rounded-full overflow-hidden border-4 border-gray-100 shrink-0 relative">
                         <img
                           src={
                             photoPreview ||
@@ -453,7 +453,7 @@ const FreelanceProfileEditor = () => {
                         />
                       </div>
                     ) : (
-                      <div className="w-24 h-24 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-2xl font-bold flex-shrink-0">
+                      <div className="w-24 h-24 bg-linear-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-2xl font-bold shrink-0">
                         {photoPreview ? (
                           <img
                             src={photoPreview}
@@ -672,7 +672,7 @@ const FreelanceProfileEditor = () => {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                       {/* Email - Éditable */}
                       <div className="flex items-center text-gray-600 p-2 rounded-lg hover:bg-gray-50 transition-colors">
-                        <Mail className="mr-3 flex-shrink-0" size={18} />
+                        <Mail className="mr-3 shrink-0" size={18} />
                         {editMode.email ? (
                           <div className="flex items-center space-x-2 flex-1">
                             <input
@@ -716,7 +716,7 @@ const FreelanceProfileEditor = () => {
 
                       {/* Téléphone - Éditable */}
                       <div className="flex items-center text-gray-600 p-2 rounded-lg hover:bg-gray-50 transition-colors">
-                        <Phone className="mr-3 flex-shrink-0" size={18} />
+                        <Phone className="mr-3 shrink-0" size={18} />
                         {editMode.telephone ? (
                           <div className="flex items-center space-x-2 flex-1">
                             <input
@@ -760,7 +760,7 @@ const FreelanceProfileEditor = () => {
 
                       {/* LOCALISATION ÉDITABLE */}
                       <div className="flex items-center text-gray-600 p-2 rounded-lg hover:bg-gray-50 transition-colors col-span-2">
-                        <MapPin className="mr-3 flex-shrink-0" size={18} />
+                        <MapPin className="mr-3 shrink-0" size={18} />
                         {editMode.ville || editMode.pays ? (
                           <div className="flex items-center space-x-2 flex-1">
                             <input
@@ -866,7 +866,7 @@ const FreelanceProfileEditor = () => {
                       <>
                         <button
                           onClick={() => setIsAIAssistantOpen(true)}
-                          className="bg-gradient-to-r from-purple-600 to-pink-600 text-white px-4 py-2 rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all duration-200 flex items-center space-x-2 text-sm font-medium"
+                          className="bg-linear-to-r from-purple-600 to-pink-600 text-white px-4 py-2 rounded-lg hover:from-purple-700 hover:to-pink-700 transition-all duration-200 flex items-center space-x-2 text-sm font-medium"
                         >
                           <Sparkles size={16} />
                           <span>Assistant IA</span>
@@ -931,7 +931,7 @@ const FreelanceProfileEditor = () => {
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    <p className="text-gray-700 leading-relaxed whitespace-pre-wrap break-words">
+                    <p className="text-gray-700 leading-relaxed whitespace-pre-wrap wrap-break-word">
                       {freelance.description || (
                         <span className="text-gray-400 italic">
                           Aucune description pour le moment. Cliquez sur
@@ -943,7 +943,7 @@ const FreelanceProfileEditor = () => {
                     {!freelance.description && (
                       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                         <div className="flex items-start space-x-3">
-                          <Sparkles className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                          <Sparkles className="w-5 h-5 text-blue-600 mt-0.5 shrink-0" />
                           <div>
                             <p className="text-blue-800 font-medium text-sm">
                               Boostez votre profil avec l'IA
@@ -1069,7 +1069,7 @@ const FreelanceProfileEditor = () => {
                       </div>
                       <button
                         onClick={() => supprimerFormation(form.id!)}
-                        className="text-red-600 hover:text-red-700 ml-4 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                        className="text-red-600 hover:text-red-700 ml-4 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
                       >
                         <Trash2 size={18} />
                       </button>
@@ -1151,7 +1151,7 @@ const FreelanceProfileEditor = () => {
                       </div>
                       <button
                         onClick={() => supprimerCertification(cert.id!)}
-                        className="text-red-600 hover:text-red-700 ml-4 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                        className="text-red-600 hover:text-red-700 ml-4 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
                       >
                         <Trash2 size={18} />
                       </button>
@@ -1220,7 +1220,7 @@ const FreelanceProfileEditor = () => {
                       </a>
                       <button
                         onClick={() => supprimerWebsite(index)}
-                        className="text-red-600 hover:text-red-700 ml-4 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                        className="text-red-600 hover:text-red-700 ml-4 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
                       >
                         <Trash2 size={18} />
                       </button>
@@ -1264,7 +1264,7 @@ const FreelanceProfileEditor = () => {
                     {services.map((service) => (
                       <div
                         key={service.id}
-                        className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
+                        className="bg-linear-to-br from-gray-50 to-gray-100 rounded-lg overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
                       >
                         <div className="relative h-32">
                           <img

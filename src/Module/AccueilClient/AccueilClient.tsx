@@ -96,14 +96,14 @@ const HeroSection: React.FC<HeroSectionProps> = ({
   }, []);
 
   return (
-    <section className="relative bg-gradient-to-r from-yellow-100 to-white overflow-hidden">
+    <section className="relative bg-linear-to-r from-yellow-100 to-white overflow-hidden">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
           {/* Colonne gauche - Texte */}
           <div className="space-y-6 animate-fade-in-up">
             <h1 className="text-4xl md:text-5xl font-bold text-gray-900 leading-tight mt-5">
               Bienvenue,{" "}
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-yellow-500 to-orange-500 animate-gradient">
+              <span className="text-transparent bg-clip-text bg-linear-to-r from-yellow-500 to-orange-500 animate-gradient">
                 {userName}
               </span>{" "}
               👋
@@ -169,7 +169,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({
                 </div>
 
                 {/* Overlay avec gradient */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent rounded-2xl"></div>
+                <div className="absolute inset-0 bg-linear-to-t from-black/20 to-transparent rounded-2xl"></div>
 
                 {/* Badge flottant */}
                 <div className="absolute bottom-6 left-6 bg-white/95 backdrop-blur-sm px-4 py-3 rounded-xl shadow-lg animate-bounce-slow">

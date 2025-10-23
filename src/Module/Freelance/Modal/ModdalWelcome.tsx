@@ -104,20 +104,20 @@ const WelcomeModal = ({
         } ${animateOut ? "opacity-0 scale-95 translate-y-8" : ""}`}
       >
         {/* Élément décoratif en arrière-plan */}
-        <div className="absolute top-0 right-0 h-40 w-40 rounded-full bg-gradient-to-br from-green-300 to-blue-300 opacity-10 -mr-20 -mt-20"></div>
-        <div className="absolute bottom-0 left-0 h-32 w-32 rounded-full bg-gradient-to-tr from-purple-300 to-pink-300 opacity-10 -ml-16 -mb-16"></div>
+        <div className="absolute top-0 right-0 h-40 w-40 rounded-full bg-linear-to-br from-green-300 to-blue-300 opacity-10 -mr-20 -mt-20"></div>
+        <div className="absolute bottom-0 left-0 h-32 w-32 rounded-full bg-linear-to-tr from-purple-300 to-pink-300 opacity-10 -ml-16 -mb-16"></div>
 
         {/* Header avec icône de succès animée */}
         <div className="text-center mb-6 relative">
-          <div className="w-20 h-20 bg-gradient-to-br from-green-100 to-green-200 rounded-full flex items-center justify-center mx-auto mb-4 shadow-md relative overflow-hidden group">
-            <div className="absolute inset-0 bg-gradient-to-r from-green-400/30 to-emerald-500/30 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+          <div className="w-20 h-20 bg-linear-to-br from-green-100 to-green-200 rounded-full flex items-center justify-center mx-auto mb-4 shadow-md relative overflow-hidden group">
+            <div className="absolute inset-0 bg-linear-to-r from-green-400/30 to-emerald-500/30 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
             <div className="animate-bounce-subtle">
               <Check className="text-green-600" size={40} strokeWidth={2.5} />
             </div>
             <div className="absolute inset-0 border-4 border-white rounded-full opacity-30"></div>
           </div>
 
-          <h2 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-green-600 to-blue-600 mb-2">
+          <h2 className="text-3xl font-bold text-transparent bg-clip-text bg-linear-to-r from-green-600 to-blue-600 mb-2">
             Bienvenue sur Anylibre ! 🎉
           </h2>
 
@@ -127,7 +127,7 @@ const WelcomeModal = ({
         </div>
 
         {/* Message */}
-        <div className="bg-gradient-to-r from-blue-50 to-green-50 p-5 rounded-xl mb-6 border border-blue-100 shadow-sm hover:shadow-md transition-shadow duration-300">
+        <div className="bg-linear-to-r from-blue-50 to-green-50 p-5 rounded-xl mb-6 border border-blue-100 shadow-sm hover:shadow-md transition-shadow duration-300">
           <p className="text-gray-700 text-center font-medium">
             Votre profil freelance a été créé avec succès ! Commencez dès
             maintenant à publier vos services.
@@ -141,7 +141,7 @@ const WelcomeModal = ({
             onClick={() =>
               (window.location.href = "/TableauDeBord/Service/Nouveau")
             }
-            className="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white py-3.5 px-4 rounded-xl font-semibold transition-all duration-300 flex items-center justify-center shadow-sm hover:shadow-md group"
+            className="w-full bg-linear-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white py-3.5 px-4 rounded-xl font-semibold transition-all duration-300 flex items-center justify-center shadow-sm hover:shadow-md group"
           >
             <div className="mr-2 transition-transform duration-300 group-hover:scale-110">
               <Plus size={20} />

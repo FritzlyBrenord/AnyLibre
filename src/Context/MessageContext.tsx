@@ -1,34 +1,59 @@
-// contexts/MessagingContext.tsx - VERSION ULTRA-SÉCURISÉE
 "use client";
-
-import React, {
-  createContext,
-  useContext,
-  useEffect,
-  useState,
-  useRef,
-  useCallback,
-} from "react";
-
 import {
-  SelectData,
   InsertDataReturn,
   UpdateData,
   DeleteData,
-  SubscribeToTable,
-  UnsubscribeFromChannel,
+  SelectData,
 } from "@/Config/SupabaseData";
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useState,
+} from "react";
 import { useAuth } from "./ContextUser";
+import { supabase } from "@/Config/supabase";
 import { compressVideo, getVideoMetadata } from "@/Utils/lib/videoCompression";
 import { compressImage, getImageMetadata } from "@/Utils/lib/imageCompression";
-import { supabase } from "@/Config/supabase";
+
+// ============= INTERFACES =============
+
+interface Conversation {
+  id: string;
+  user1_id: string;
+  user2_id: string;
+  title?: string;
+  conversation_type: "direct" | "group" | "order" | "project" | "dispute";
+  is_archived_user1: boolean;
+  is_archived_user2: boolean;
+  is_blocked_user1: boolean;
+  is_blocked_user2: boolean;
+  is_spam_user1: boolean;
+  is_spam_user2: boolean;
+  is_starred_user1: boolean;
+  is_starred_user2: boolean;
+  last_message_at: string;
+  created_at: string;
+  updated_at: string;
+  order_id?: string;
+  service_id?: string;
+  project_title?: string;
+  budget_amount?: number;
+  budget_currency?: string;
+  deadline?: string;
+  is_deleted_user1: boolean;
+  is_deleted_user2: boolean;
+  deleted_at_user1?: string;
+  deleted_at_user2?: string;
+}
 
 interface Message {
   id: string;
   conversation_id: string;
   sender_id: string;
   reply_to_id?: string;
-  content: string;
+  content?: string;
   message_type:
     | "text"
     | "image"
@@ -36,63 +61,84 @@ interface Message {
     | "file"
     | "order"
     | "system"
-    | "warning";
-  is_read: boolean;
+    | "warning"
+    | "proposal"
+    | "milestone"
+    | "payment"
+    | "delivery";
+  is_read_user1: boolean;
+  is_read_user2: boolean;
+  read_at_user1?: string;
+  read_at_user2?: string;
   is_starred: boolean;
   is_edited: boolean;
+  edited_at?: string;
   file_url?: string;
   file_name?: string;
   file_size?: number;
   file_type?: string;
+  thumbnail_url?: string;
   order_details?: any;
-  read_at?: string;
+  milestone_number?: number;
+  payment_amount?: number;
+  delivery_date?: string;
+  proposal_details?: any;
+  created_at: string;
+  updated_at: string;
   is_deleted_user1: boolean;
   is_deleted_user2: boolean;
-  created_at: string;
-  updated_at: string;
-  sender?: {
-    id: string;
-    nom_utilisateur: string;
-    profile_image?: string;
-  };
-  reply_to?: Message;
+  deleted_at_user1?: string;
+  deleted_at_user2?: string;
 }
 
-interface Conversation {
-  id: string;
-  user1_id: string;
-  user2_id: string;
-  title?: string;
-  conversation_type: "direct" | "group" | "order";
-  is_archived: boolean;
-  is_blocked: boolean;
-  is_spam: boolean;
-  is_starred: boolean;
-  last_message_at: string;
-  created_at: string;
-  updated_at: string;
-  order_id?: string;
-  other_user?: {
+interface ConversationWithDetails extends Conversation {
+  otherUser?: {
     id: string;
     nom_utilisateur: string;
+    email: string;
     profile_image?: string;
-    role: "client" | "freelance";
-    email?: string;
-    status?: string;
-    phone?: string;
+    user_type?: string;
   };
-  last_message?: Message;
-  unread_count: number;
+  lastMessage?: Message;
+  unreadCount?: number;
 }
 
-export interface MessagingContextType {
-  conversations: Conversation[];
-  currentConversation: Conversation | null;
-  setCurrentConversation: (conversation: Conversation | null) => void;
-  messages: Message[];
-  loading: boolean;
-  error: string | null;
-  setError: (error: string | null) => void;
+// ============= TYPES =============
+
+interface MessagingContextType {
+  // Conversations
+  conversations: ConversationWithDetails[];
+  currentConversation: ConversationWithDetails | null;
+  GetOrCreateConversation: (
+    otherUserId: string,
+    conversationType?: string,
+    orderDetails?: any
+  ) => Promise<Conversation | null>;
+  GetConversationById: (conversationId: string) => Promise<Conversation | null>;
+  GetUserConversations: (userId: string) => Promise<ConversationWithDetails[]>;
+  DeleteConversation: (conversationId: string) => Promise<boolean>;
+  ArchiveConversation: (
+    conversationId: string,
+    archive: boolean
+  ) => Promise<boolean>;
+  BlockConversation: (
+    conversationId: string,
+    block: boolean
+  ) => Promise<boolean>;
+  StarConversation: (conversationId: string, star: boolean) => Promise<boolean>;
+  MarkConversationAsSpam: (
+    conversationId: string,
+    spam: boolean
+  ) => Promise<boolean>;
+  SetCurrentConversation: (
+    conversation: ConversationWithDetails | null
+  ) => void;
+  uploadImage: (file: File, userId: string) => Promise<any>;
+  uploadVideo: (file: File, userId: string) => Promise<any>;
+  uploadDocument: (file: File, userId: string) => Promise<any>;
+  deleteImage: (path: string) => Promise<boolean>;
+  deleteVideo: (path: string) => Promise<boolean>;
+  deleteDocument: (path: string) => Promise<boolean>;
   isUploadingImage: boolean;
   isUploadingVideo: boolean;
   isUploadingDocument: boolean;
@@ -106,43 +152,54 @@ export interface MessagingContextType {
     | "compressing"
     | "uploading"
     | "complete";
-  sendMessage: (
-    content: string,
+  // Messages
+  messages: Message[];
+  SendMessage: (
     conversationId: string,
-    file?: File,
-    replyTo?: string
-  ) => Promise<boolean>;
-  createConversation: (
-    otherUserId: string,
-    initialMessage?: string
-  ) => Promise<string | null>;
-  markAsRead: (conversationId: string) => Promise<boolean>;
-  toggleStar: (conversationId: string, messageId?: string) => Promise<boolean>;
-  archiveConversation: (conversationId: string) => Promise<boolean>;
-  reportConversation: (conversationId: string) => Promise<boolean>;
-  deleteMessage: (
-    messageId: string,
-    conversationId: string
-  ) => Promise<boolean>;
-  deleteAllMessagesForUser: (conversationId: string) => Promise<boolean>;
-  deleteConversation: (conversationId: string) => Promise<boolean>;
-  uploadImage: (file: File, userId: string) => Promise<any>;
-  uploadVideo: (file: File, userId: string) => Promise<any>;
-  uploadDocument: (file: File, userId: string) => Promise<any>;
-  deleteImage: (path: string) => Promise<boolean>;
-  deleteVideo: (path: string) => Promise<boolean>;
-  deleteDocument: (path: string) => Promise<boolean>;
-  searchTerm: string;
-  setSearchTerm: (term: string) => void;
-  activeFilter: string;
-  setActiveFilter: (filter: string) => void;
-  isMobile: boolean;
-  showSidebar: boolean;
-  setShowSidebar: (show: boolean) => void;
-  messagesEndRef: React.RefObject<HTMLDivElement | null>;
-  hasAccessToConversation: (conversationId: string) => Promise<boolean>;
-  validateConversationAccess: (conversationId: string) => Promise<boolean>;
+    content: string,
+    messageType?: string,
+    fileData?: any
+  ) => Promise<Message | null>;
+  GetConversationMessages: (conversationId: string) => Promise<Message[]>;
+  MarkMessageAsRead: (messageId: string) => Promise<boolean>;
+  MarkAllMessagesAsRead: (conversationId: string) => Promise<boolean>;
+  DeleteMessage: (messageId: string) => Promise<boolean>;
+  EditMessage: (messageId: string, newContent: string) => Promise<boolean>;
+  StarMessage: (messageId: string, star: boolean) => Promise<boolean>;
+  ReplyToMessage: (
+    conversationId: string,
+    content: string,
+    replyToId: string
+  ) => Promise<Message | null>;
+
+  // Fonctionnalités freelance
+  SendProposal: (
+    conversationId: string,
+    proposalData: any
+  ) => Promise<Message | null>;
+  SendMilestone: (
+    conversationId: string,
+    milestoneData: any
+  ) => Promise<Message | null>;
+  SendPaymentRequest: (
+    conversationId: string,
+    paymentData: any
+  ) => Promise<Message | null>;
+
+  SendMessageWithFile: (
+    conversationId: string,
+    file: File,
+    messageType?: "image" | "video" | "file"
+  ) => Promise<Message | null>;
+  // États
+  loading: boolean;
+  error: string | null;
+  realtimeConnected: boolean;
+  RefreshConversations: () => Promise<void>;
+  RefreshMessages: (conversationId: string) => Promise<void>;
 }
+
+// ============= CONTEXTE =============
 
 const MessagingContext = createContext<MessagingContextType | undefined>(
   undefined
@@ -151,20 +208,17 @@ const MessagingContext = createContext<MessagingContextType | undefined>(
 export const MessagingProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
-  const { currentSession } = useAuth();
-  const currentUserId = currentSession?.user?.id;
-
-  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const { currentSession, GetUserById } = useAuth();
+  const [conversations, setConversations] = useState<ConversationWithDetails[]>(
+    []
+  );
   const [currentConversation, setCurrentConversation] =
-    useState<Conversation | null>(null);
+    useState<ConversationWithDetails | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [activeFilter, setActiveFilter] = useState("all");
-  const [showSidebar, setShowSidebar] = useState(true);
-  const [isMobile, setIsMobile] = useState(false);
-
+  const [realtimeConnected, setRealtimeConnected] = useState<boolean>(false);
+  const [realtimeSubscription, setRealtimeSubscription] = useState<any>(null);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [isUploadingVideo, setIsUploadingVideo] = useState(false);
   const [isUploadingDocument, setIsUploadingDocument] = useState(false);
@@ -175,851 +229,185 @@ export const MessagingProvider: React.FC<{ children: React.ReactNode }> = ({
   const [videoUploadStep, setVideoUploadStep] = useState<
     "idle" | "validating" | "compressing" | "uploading" | "complete"
   >("idle");
+  // ============= CONFIGURATION REALTIME =============
 
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  // ============= FONCTIONS UPLOAD FICHIERS =============
 
-  // ============================================
-  // 🔒 DÉTECTION MOBILE
-  // ============================================
-  useEffect(() => {
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768);
-      if (window.innerWidth < 768) {
-        setShowSidebar(false);
-      } else {
-        setShowSidebar(true);
-      }
-    };
-    checkMobile();
-    window.addEventListener("resize", checkMobile);
-    return () => window.removeEventListener("resize", checkMobile);
-  }, []);
+  // ============= FONCTIONS UPLOAD FICHIERS =============
 
-  // ============================================
-  // 🔒 FONCTION: VÉRIFIER L'ACCÈS À UNE CONVERSATION
-  // ============================================
-  const hasAccessToConversation = useCallback(
-    async (conversationId: string): Promise<boolean> => {
-      if (!currentUserId || !conversationId) {
-        console.error(
-          "🚫 SÉCURITÉ: Utilisateur non connecté ou conversation manquante"
-        );
-        return false;
-      }
-
-      try {
-        // ✅ RLS filtrera automatiquement côté Supabase
-        const conversationData = await SelectData("conversations", {
-          conditions: [{ column: "id", operator: "eq", value: conversationId }],
-        });
-
-        if (!conversationData || conversationData.length === 0) {
-          console.error(
-            "🚫 SÉCURITÉ: Conversation non trouvée:",
-            conversationId
-          );
-          return false;
-        }
-
-        const conversation = conversationData[0];
-
-        // ✅ DOUBLE VÉRIFICATION CLIENT-SIDE (défense en profondeur)
-        const hasAccess =
-          conversation.user1_id === currentUserId ||
-          conversation.user2_id === currentUserId;
-
-        if (!hasAccess) {
-          console.error(
-            "🚫 SÉCURITÉ: Accès refusé - Utilisateur",
-            currentUserId,
-            "n'a pas accès à la conversation",
-            conversationId
-          );
-          console.warn(
-            "🔍 DEBUG: User1:",
-            conversation.user1_id,
-            "User2:",
-            conversation.user2_id
-          );
-        }
-
-        return hasAccess;
-      } catch (error) {
-        console.error("❌ ERREUR: Vérification accès conversation:", error);
-        return false;
-      }
-    },
-    [currentUserId]
-  );
-
-  // ============================================
-  // 🔒 FONCTION: VALIDER L'ACCÈS AVEC ERREUR
-  // ============================================
-  const validateConversationAccess = useCallback(
-    async (conversationId: string): Promise<boolean> => {
-      const hasAccess = await hasAccessToConversation(conversationId);
-      if (!hasAccess) {
-        setError(
-          "🚫 Accès refusé: vous n'avez pas la permission de voir cette conversation"
-        );
-        return false;
-      }
-      return true;
-    },
-    [hasAccessToConversation]
-  );
-
-  // ============================================
-  // 🔒 FONCTION: RÉCUPÉRER LES DONNÉES UTILISATEUR
-  // ============================================
-  const getUserData = useCallback(async (userId: string) => {
-    try {
-      const userData = await SelectData("users", {
-        conditions: [{ column: "id", operator: "eq", value: userId }],
-      });
-
-      if (userData && userData.length > 0) {
-        return {
-          id: userData[0].id,
-          nom_utilisateur: userData[0].nom_utilisateur,
-          profile_image: userData[0].profile_image,
-          role: userData[0].role,
-          email: userData[0].email,
-          status: userData[0].status,
-          phone: userData[0].phone,
-        };
-      }
-      return null;
-    } catch (err) {
-      console.error("❌ ERREUR: Récupération utilisateur:", err);
-      return null;
-    }
-  }, []);
-
-  // ============================================
-  // 🔒 FONCTION: CHARGER LES CONVERSATIONS
-  // ============================================
-  const loadConversations = useCallback(async () => {
-    if (!currentUserId) {
-      console.warn(
-        "⚠️ SÉCURITÉ: Tentative de chargement sans utilisateur connecté"
-      );
-      return;
-    }
-
-    try {
-      setLoading(true);
-
-      console.log(
-        "🔍 Chargement conversations pour utilisateur:",
-        currentUserId
-      );
-
-      // ✅ SÉCURITÉ: RLS filtrera automatiquement côté Supabase
-      // On récupère seulement les conversations où l'utilisateur est user1 OU user2
-      const userConversations = await SelectData("conversations", {
-        conditions: [
-          { column: "user1_id", operator: "eq", value: currentUserId },
-          { column: "user2_id", operator: "eq", value: currentUserId },
-        ],
-        or: true, // user1_id = currentUserId OU user2_id = currentUserId
-        orderBy: { column: "last_message_at", ascending: false },
-      });
-
-      if (!userConversations || !Array.isArray(userConversations)) {
-        console.log("ℹ️ Aucune conversation trouvée");
-        setConversations([]);
-        return;
-      }
-
-      console.log(`✅ ${userConversations.length} conversations chargées`);
-
-      // ✅ DOUBLE VÉRIFICATION CLIENT-SIDE (défense en profondeur)
-      const validConversations = userConversations.filter(
-        (conv: any) =>
-          conv.user1_id === currentUserId || conv.user2_id === currentUserId
-      );
-
-      if (validConversations.length !== userConversations.length) {
-        console.warn(
-          "⚠️ SÉCURITÉ: Certaines conversations filtrées côté client",
-          userConversations.length - validConversations.length
-        );
-      }
-
-      // ✅ ENRICHIR LES CONVERSATIONS
-      const enrichedConversations = await Promise.all(
-        validConversations.map(async (conv: any) => {
-          try {
-            // Identifier l'autre utilisateur
-            const otherUserId =
-              conv.user1_id === currentUserId ? conv.user2_id : conv.user1_id;
-            const otherUser = await getUserData(otherUserId);
-
-            // Récupérer les messages visibles pour cet utilisateur
-            const allMessages = await SelectData("messages", {
-              conditions: [
-                { column: "conversation_id", operator: "eq", value: conv.id },
-              ],
-              orderBy: { column: "created_at", ascending: false },
-            });
-
-            // ✅ FILTRER LES MESSAGES VISIBLES (selon is_deleted_user1/user2)
-            const isCurrentUserUser1 = conv.user1_id === currentUserId;
-            const visibleMessages =
-              allMessages?.filter((msg: any) => {
-                const deleteFlag = isCurrentUserUser1
-                  ? msg.is_deleted_user1
-                  : msg.is_deleted_user2;
-                return !deleteFlag;
-              }) || [];
-
-            // Si aucun message visible, ne pas afficher la conversation
-            if (visibleMessages.length === 0) {
-              return null;
-            }
-
-            // Enrichir le dernier message
-            let lastMessageEnriched = null;
-            if (visibleMessages.length > 0) {
-              const sender = await getUserData(visibleMessages[0].sender_id);
-              lastMessageEnriched = {
-                ...visibleMessages[0],
-                sender,
-              };
-            }
-
-            // Compter les messages non lus
-            const unreadMessages = visibleMessages.filter(
-              (msg: any) => msg.sender_id !== currentUserId && !msg.is_read
-            );
-
-            return {
-              ...conv,
-              other_user: otherUser,
-              last_message: lastMessageEnriched,
-              unread_count: unreadMessages.length,
-            };
-          } catch (error) {
-            console.error(
-              "❌ ERREUR: Enrichissement conversation:",
-              conv.id,
-              error
-            );
-            return null;
-          }
-        })
-      );
-
-      const finalConversations = enrichedConversations.filter(
-        (c) => c !== null
-      );
-      console.log(`✅ ${finalConversations.length} conversations enrichies`);
-
-      setConversations(finalConversations);
-    } catch (err: any) {
-      console.error("❌ ERREUR: Chargement conversations:", err);
-      setError(err.message || "Erreur lors du chargement des conversations");
-    } finally {
-      setLoading(false);
-    }
-  }, [currentUserId, getUserData]);
-
-  // ============================================
-  // 🔒 FONCTION: CHARGER LES MESSAGES
-  // ============================================
-  const loadMessages = useCallback(
-    async (conversationId: string) => {
-      if (!conversationId || !currentUserId) {
-        console.warn("⚠️ SÉCURITÉ: Tentative de chargement sans ID valide");
-        return;
-      }
-
-      // ✅ VÉRIFICATION CRITIQUE: L'utilisateur a-t-il accès?
-      const hasAccess = await validateConversationAccess(conversationId);
-      if (!hasAccess) {
-        console.error("🚫 SÉCURITÉ: Accès refusé au chargement des messages");
-        setMessages([]);
-        setCurrentConversation(null);
-        return;
-      }
-
+  const GetUserConversations = useCallback(
+    async (userId: string): Promise<ConversationWithDetails[]> => {
       try {
         setLoading(true);
+        setError(null);
 
-        console.log(
-          "🔍 Chargement messages pour conversation:",
-          conversationId
+        const allConversations = await SelectData("conversations");
+        const allMessages = await SelectData("messages");
+
+        if (!allConversations) return [];
+
+        // Filtrer les conversations de l'utilisateur avec sécurité
+        const userConversations = allConversations.filter(
+          (conv: Conversation) => {
+            const isUser1 = conv.user1_id === userId;
+            const isUser2 = conv.user2_id === userId;
+
+            if (isUser1) {
+              return !conv.is_deleted_user1 && !conv.is_blocked_user2;
+            }
+            if (isUser2) {
+              return !conv.is_deleted_user2 && !conv.is_blocked_user1;
+            }
+            return false;
+          }
         );
 
-        // Récupérer la conversation
-        const conversation = await SelectData("conversations", {
-          conditions: [{ column: "id", operator: "eq", value: conversationId }],
-        });
+        // Enrichir avec les détails
+        const enrichedConversations: ConversationWithDetails[] =
+          await Promise.all(
+            userConversations.map(async (conv: Conversation) => {
+              const otherUserId =
+                conv.user1_id === userId ? conv.user2_id : conv.user1_id;
+              const otherUser = await GetUserById(otherUserId);
 
-        if (!conversation || conversation.length === 0) {
-          console.error("🚫 SÉCURITÉ: Conversation non trouvée");
-          setMessages([]);
-          return;
-        }
+              // Récupérer les messages de la conversation
+              const convMessages = allMessages
+                ?.filter((msg: Message) => {
+                  const isInConv = msg.conversation_id === conv.id;
+                  const isDeleted =
+                    conv.user1_id === userId
+                      ? msg.is_deleted_user1
+                      : msg.is_deleted_user2;
+                  return isInConv && !isDeleted;
+                })
+                .sort(
+                  (a: Message, b: Message) =>
+                    new Date(b.created_at).getTime() -
+                    new Date(a.created_at).getTime()
+                );
 
-        const conv = conversation[0];
+              const lastMessage =
+                convMessages && convMessages.length > 0
+                  ? convMessages[0]
+                  : undefined;
 
-        // ✅ DOUBLE VÉRIFICATION
-        if (
-          conv.user1_id !== currentUserId &&
-          conv.user2_id !== currentUserId
-        ) {
-          console.error("🚫 SÉCURITÉ: Utilisateur non autorisé");
-          setMessages([]);
-          setCurrentConversation(null);
-          return;
-        }
-
-        const isCurrentUserUser1 = conv.user1_id === currentUserId;
-
-        // ✅ RÉCUPÉRER LES MESSAGES (RLS filtrera automatiquement)
-        const messagesData = await SelectData("messages", {
-          conditions: [
-            {
-              column: "conversation_id",
-              operator: "eq",
-              value: conversationId,
-            },
-          ],
-          orderBy: { column: "created_at", ascending: true },
-        });
-
-        if (messagesData && Array.isArray(messagesData)) {
-          // ✅ FILTRAGE CRITIQUE: Messages non supprimés par cet utilisateur
-          const visibleMessages = messagesData.filter((msg: any) => {
-            const deleteFlag = isCurrentUserUser1
-              ? msg.is_deleted_user1
-              : msg.is_deleted_user2;
-            return !deleteFlag;
-          });
-
-          console.log(
-            `✅ ${visibleMessages.length}/${messagesData.length} messages visibles`
-          );
-
-          // Enrichir les messages
-          const enrichedMessages = await Promise.all(
-            visibleMessages.map(async (msg: any) => {
-              const sender = await getUserData(msg.sender_id);
-
-              let reply_to = null;
-              if (msg.reply_to_id) {
-                const replyData = await SelectData("messages", {
-                  conditions: [
-                    { column: "id", operator: "eq", value: msg.reply_to_id },
-                  ],
-                });
-
-                if (replyData && replyData.length > 0) {
-                  const replySender = await getUserData(replyData[0].sender_id);
-                  reply_to = {
-                    ...replyData[0],
-                    sender: replySender,
-                  };
-                }
-              }
+              // Compter les messages non lus
+              const unreadCount =
+                convMessages?.filter((msg: Message) => {
+                  const isRead =
+                    conv.user1_id === userId
+                      ? msg.is_read_user1
+                      : msg.is_read_user2;
+                  return msg.sender_id !== userId && !isRead;
+                }).length || 0;
 
               return {
-                ...msg,
-                sender,
-                reply_to,
+                ...conv,
+                otherUser: otherUser
+                  ? {
+                      id: otherUser.id,
+                      nom_utilisateur: otherUser.nom_utilisateur,
+                      email: otherUser.email,
+                      profile_image: otherUser.profile_image,
+                      user_type: otherUser.role,
+                    }
+                  : undefined,
+                lastMessage,
+                unreadCount,
               };
             })
           );
 
-          setMessages(enrichedMessages);
-        } else {
-          setMessages([]);
-        }
-      } catch (err: any) {
-        console.error("❌ ERREUR: Chargement messages:", err);
-        setError(err.message || "Erreur lors du chargement des messages");
+        // Trier par dernière activité
+        enrichedConversations.sort(
+          (a, b) =>
+            new Date(b.last_message_at).getTime() -
+            new Date(a.last_message_at).getTime()
+        );
+
+        return enrichedConversations;
+      } catch (error: any) {
+        console.error("❌ Erreur GetUserConversations:", error);
+        setError(
+          error.message || "Erreur lors de la récupération des conversations"
+        );
+        return [];
       } finally {
         setLoading(false);
       }
     },
-    [currentUserId, getUserData, validateConversationAccess]
+    [GetUserById]
   );
+  const RefreshConversations = useCallback(async () => {
+    if (currentSession?.user?.id) {
+      const userConversations = await GetUserConversations(
+        currentSession?.user?.id
+      );
+      setConversations(userConversations);
+    }
+  }, [GetUserConversations, currentSession?.user?.id]);
 
-  // ============================================
-  // 🔒 FONCTION: ENVOYER UN MESSAGE
-  // ============================================
-  const sendMessage = async (
-    content: string,
+  const SendMessageWithFile = async (
     conversationId: string,
-    file?: File,
-    replyTo?: string
-  ): Promise<boolean> => {
-    if (!currentUserId) {
-      console.error("🚫 SÉCURITÉ: Utilisateur non connecté");
-      setError("Vous devez être connecté pour envoyer un message");
-      return false;
-    }
-
-    // ✅ VÉRIFIER L'ACCÈS À LA CONVERSATION
-    const hasAccess = await validateConversationAccess(conversationId);
-    if (!hasAccess) {
-      console.error("🚫 SÉCURITÉ: Envoi message refusé");
-      return false;
-    }
-
+    file: File,
+    messageType: "image" | "video" | "file" = "file"
+  ): Promise<Message | null> => {
     try {
-      console.log("📤 Envoi message dans conversation:", conversationId);
+      setLoading(true);
+      setError(null);
 
-      const messageData: any = {
-        conversation_id: conversationId,
-        sender_id: currentUserId,
-        content: content.trim(),
-        message_type: "text",
-        is_read: false,
-        is_starred: false,
-        is_edited: false,
-        is_deleted_user1: false,
-        is_deleted_user2: false,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      };
-
-      if (replyTo) {
-        messageData.reply_to_id = replyTo;
-      }
-
-      // Gestion des fichiers
-      if (file) {
-        let uploadResult = null;
-
-        if (file.type.startsWith("image/")) {
-          messageData.message_type = "image";
-          uploadResult = await uploadImage(file, currentUserId);
-        } else if (file.type.startsWith("video/")) {
-          messageData.message_type = "video";
-          uploadResult = await uploadVideo(file, currentUserId);
-        } else {
-          messageData.message_type = "file";
-          uploadResult = await uploadDocument(file, currentUserId);
-        }
-
-        if (uploadResult) {
-          messageData.file_url = uploadResult.url;
-          messageData.file_name = file.name;
-          messageData.file_size = file.size;
-          messageData.file_type = file.type;
-        } else {
-          throw new Error("Échec de l'upload du fichier");
-        }
-      }
-
-      const result = await InsertDataReturn("messages", messageData);
-
-      if (result?.success) {
-        console.log("✅ Message envoyé avec succès");
-
-        // Mettre à jour la conversation
-        await UpdateData("conversations", conversationId, {
-          last_message_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        });
-
-        // Recharger les données
-        await loadMessages(conversationId);
-        await loadConversations();
-
-        // Scroll vers le bas
-        setTimeout(() => {
-          messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-        }, 100);
-
-        return true;
-      }
-
-      return false;
-    } catch (err: any) {
-      console.error("❌ ERREUR: Envoi message:", err);
-      setError(err.message || "Erreur lors de l'envoi du message");
-      return false;
-    }
-  };
-
-  // ============================================
-  // 🔒 FONCTION: CRÉER UNE CONVERSATION
-  // ============================================
-  const createConversation = async (
-    otherUserId: string,
-    initialMessage?: string
-  ): Promise<string | null> => {
-    if (!currentUserId || !otherUserId) {
-      setError("ID utilisateur manquant");
-      return null;
-    }
-
-    // ✅ EMPÊCHER LA CRÉATION AVEC SOI-MÊME
-    if (currentUserId === otherUserId) {
-      setError("Impossible de créer une conversation avec soi-même");
-      return null;
-    }
-
-    try {
-      console.log("🔍 Création conversation avec:", otherUserId);
-
-      // Vérifier que l'autre utilisateur existe
-      const otherUserData = await getUserData(otherUserId);
-      if (!otherUserData) {
-        setError("Utilisateur non trouvé");
+      const currentUserId = currentSession?.user?.id;
+      if (!currentUserId) {
+        setError("Utilisateur non connecté");
         return null;
       }
 
-      // ✅ RECHERCHER CONVERSATION EXISTANTE
-      const existingConversations = await SelectData("conversations", {
-        conditions: [
-          { column: "user1_id", operator: "eq", value: currentUserId },
-          { column: "user2_id", operator: "eq", value: otherUserId },
-          { column: "user1_id", operator: "eq", value: otherUserId },
-          { column: "user2_id", operator: "eq", value: currentUserId },
-        ],
-        or: true,
-      });
+      // Déterminer le type d'upload
+      let uploadFunction: (file: File, userId: string) => Promise<any>;
+      let dbMessageType = messageType;
 
-      // Filtrer manuellement pour les bonnes combinaisons
-      const validConversations =
-        existingConversations?.filter(
-          (conv: any) =>
-            (conv.user1_id === currentUserId &&
-              conv.user2_id === otherUserId) ||
-            (conv.user1_id === otherUserId && conv.user2_id === currentUserId)
-        ) || [];
-
-      // ✅ SI CONVERSATION EXISTE
-      if (validConversations.length > 0) {
-        const existingConv = validConversations[0];
-        console.log("✅ Conversation existante trouvée:", existingConv.id);
-
-        // Vérifier l'accès
-        if (
-          existingConv.user1_id !== currentUserId &&
-          existingConv.user2_id !== currentUserId
-        ) {
-          console.error(
-            "🚫 SÉCURITÉ: Accès refusé à la conversation existante"
-          );
-          setError("Accès refusé");
-          return null;
-        }
-
-        // Ajouter le message initial si fourni
-        if (initialMessage && initialMessage.trim()) {
-          await sendMessage(initialMessage, existingConv.id);
-        }
-
-        await UpdateData("conversations", existingConv.id, {
-          last_message_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        });
-
-        await loadConversations();
-        return existingConv.id;
+      if (messageType === "image") {
+        uploadFunction = uploadImage;
+      } else if (messageType === "video") {
+        uploadFunction = uploadVideo;
+      } else {
+        uploadFunction = uploadDocument;
+        dbMessageType = "file";
       }
 
-      // ✅ CRÉER NOUVELLE CONVERSATION
-      console.log("🆕 Création nouvelle conversation");
+      // Upload du fichier
+      const uploadResult = await uploadFunction(file, currentUserId);
 
-      const conversationData = {
-        user1_id: currentUserId,
-        user2_id: otherUserId,
-        conversation_type: "direct",
-        is_archived: false,
-        is_blocked: false,
-        is_spam: false,
-        is_starred: false,
-        last_message_at: new Date().toISOString(),
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
+      if (!uploadResult) {
+        throw new Error("Échec de l'upload du fichier");
+      }
+
+      // Préparer les données du fichier
+      const fileData = {
+        file_url: uploadResult.url || uploadResult.publicUrl,
+        file_name: file.name,
+        file_size: file.size,
+        file_type: file.type,
       };
 
-      const result = await InsertDataReturn("conversations", conversationData);
+      // Envoyer le message
+      const message = await SendMessage(
+        conversationId,
+        file.name, // Contenu = nom du fichier
+        dbMessageType,
+        fileData
+      );
 
-      if (result?.success && result.rows?.[0]?.id) {
-        const conversationId = result.rows[0].id;
-        console.log("✅ Nouvelle conversation créée:", conversationId);
-
-        // Ajouter le message initial
-        if (initialMessage && initialMessage.trim()) {
-          await sendMessage(initialMessage, conversationId);
-        }
-
-        await loadConversations();
-        return conversationId;
-      }
-
-      console.error("❌ ERREUR: Aucun ID retourné");
-      setError("Erreur lors de la création de la conversation");
+      return message;
+    } catch (error: any) {
+      console.error("❌ Erreur SendMessageWithFile:", error);
+      setError(error.message || "Erreur lors de l'envoi du fichier");
       return null;
-    } catch (err: any) {
-      console.error("❌ ERREUR: Création conversation:", err);
-      setError(err.message || "Erreur lors de la création");
-      return null;
+    } finally {
+      setLoading(false);
     }
   };
-
-  // ============================================
-  // 🔒 FONCTION: MARQUER COMME LU
-  // ============================================
-  const markAsRead = useCallback(
-    async (conversationId: string): Promise<boolean> => {
-      if (!currentUserId) return false;
-
-      const hasAccess = await validateConversationAccess(conversationId);
-      if (!hasAccess) return false;
-
-      try {
-        const unreadMessages = messages.filter(
-          (msg) => !msg.is_read && msg.sender_id !== currentUserId
-        );
-
-        for (const message of unreadMessages) {
-          await UpdateData("messages", message.id, {
-            is_read: true,
-            read_at: new Date().toISOString(),
-          });
-        }
-
-        await loadMessages(conversationId);
-        await loadConversations();
-        return true;
-      } catch (err: any) {
-        console.error("❌ ERREUR: Marquage comme lu:", err);
-        return false;
-      }
-    },
-    [
-      currentUserId,
-      messages,
-      loadMessages,
-      loadConversations,
-      validateConversationAccess,
-    ]
-  );
-
-  // ============================================
-  // 🔒 FONCTION: BASCULER ÉTOILE
-  // ============================================
-  const toggleStar = async (
-    conversationId: string,
-    messageId?: string
-  ): Promise<boolean> => {
-    try {
-      if (messageId) {
-        const message = messages.find((msg) => msg.id === messageId);
-        if (message) {
-          await UpdateData("messages", messageId, {
-            is_starred: !message.is_starred,
-          });
-          await loadMessages(conversationId);
-        }
-      } else {
-        const conversation = conversations.find(
-          (conv) => conv.id === conversationId
-        );
-        if (conversation) {
-          await UpdateData("conversations", conversationId, {
-            is_starred: !conversation.is_starred,
-            updated_at: new Date().toISOString(),
-          });
-          await loadConversations();
-        }
-      }
-      return true;
-    } catch (err: any) {
-      console.error("❌ ERREUR: Toggle star:", err);
-      return false;
-    }
-  };
-
-  // ============================================
-  // 🔒 FONCTION: ARCHIVER/DÉSARCHIVER
-  // ============================================
-  const archiveConversation = async (
-    conversationId: string
-  ): Promise<boolean> => {
-    try {
-      const conversation = conversations.find((c) => c.id === conversationId);
-      if (!conversation) return false;
-
-      await UpdateData("conversations", conversationId, {
-        is_archived: !conversation.is_archived,
-        updated_at: new Date().toISOString(),
-      });
-
-      await loadConversations();
-
-      if (currentConversation?.id === conversationId) {
-        setCurrentConversation(null);
-        setMessages([]);
-      }
-
-      return true;
-    } catch (err: any) {
-      console.error("❌ ERREUR: Archivage:", err);
-      return false;
-    }
-  };
-
-  // ============================================
-  // 🔒 FONCTION: SIGNALER/RETIRER SPAM
-  // ============================================
-  const reportConversation = async (
-    conversationId: string
-  ): Promise<boolean> => {
-    try {
-      const conversation = conversations.find((c) => c.id === conversationId);
-      if (!conversation) return false;
-
-      await UpdateData("conversations", conversationId, {
-        is_spam: !conversation.is_spam,
-        updated_at: new Date().toISOString(),
-      });
-
-      await loadConversations();
-
-      if (currentConversation?.id === conversationId) {
-        setCurrentConversation(null);
-        setMessages([]);
-      }
-
-      return true;
-    } catch (err: any) {
-      console.error("❌ ERREUR: Rapport spam:", err);
-      return false;
-    }
-  };
-
-  // ============================================
-  // 🔒 FONCTION: SUPPRIMER UN MESSAGE
-  // ============================================
-  const deleteMessage = async (
-    messageId: string,
-    conversationId: string
-  ): Promise<boolean> => {
-    try {
-      if (!currentUserId) {
-        setError("Authentification requise");
-        return false;
-      }
-
-      // Vérifier l'accès
-      const hasAccess = await validateConversationAccess(conversationId);
-      if (!hasAccess) {
-        setError("Accès refusé à cette conversation");
-        return false;
-      }
-
-      const conversation = conversations.find((c) => c.id === conversationId);
-      if (!conversation) return false;
-
-      const isCurrentUserUser1 = conversation.user1_id === currentUserId;
-      const deleteFlag = isCurrentUserUser1
-        ? "is_deleted_user1"
-        : "is_deleted_user2";
-
-      await UpdateData("messages", messageId, {
-        [deleteFlag]: true,
-        updated_at: new Date().toISOString(),
-      });
-
-      await loadMessages(conversationId);
-      await loadConversations();
-
-      return true;
-    } catch (err: any) {
-      console.error("❌ ERREUR: Suppression message:", err);
-      setError(err.message || "Erreur suppression");
-      return false;
-    }
-  };
-
-  // ============================================
-  // 🔒 FONCTION: SUPPRIMER TOUS LES MESSAGES
-  // ============================================
-  const deleteAllMessagesForUser = async (
-    conversationId: string
-  ): Promise<boolean> => {
-    try {
-      if (!currentUserId) {
-        setError("Authentification requise");
-        return false;
-      }
-
-      // Vérifier l'accès
-      const hasAccess = await validateConversationAccess(conversationId);
-      if (!hasAccess) {
-        setError("Accès refusé");
-        return false;
-      }
-
-      const conversation = conversations.find((c) => c.id === conversationId);
-      if (!conversation) {
-        setError("Conversation introuvable");
-        return false;
-      }
-
-      if (conversation.is_archived || conversation.is_spam) {
-        setError("Impossible de supprimer une conversation archivée ou spam");
-        return false;
-      }
-
-      const isCurrentUserUser1 = conversation.user1_id === currentUserId;
-      const deleteFlag = isCurrentUserUser1
-        ? "is_deleted_user1"
-        : "is_deleted_user2";
-
-      const allMessages = await SelectData("messages", {
-        conditions: [
-          { column: "conversation_id", operator: "eq", value: conversationId },
-        ],
-      });
-
-      if (allMessages && Array.isArray(allMessages)) {
-        for (const msg of allMessages) {
-          await UpdateData("messages", msg.id, {
-            [deleteFlag]: true,
-            updated_at: new Date().toISOString(),
-          });
-        }
-      }
-
-      await loadMessages(conversationId);
-      await loadConversations();
-
-      if (currentConversation?.id === conversationId) {
-        setCurrentConversation(null);
-        setMessages([]);
-      }
-
-      return true;
-    } catch (err: any) {
-      console.error("❌ ERREUR: Suppression conversation:", err);
-      setError(err.message || "Erreur suppression");
-      return false;
-    }
-  };
-
-  // ============================================
-  // 🔒 FONCTION: SUPPRIMER CONVERSATION
-  // ============================================
-  const deleteConversation = async (
-    conversationId: string
-  ): Promise<boolean> => {
-    return deleteAllMessagesForUser(conversationId);
-  };
-
-  // ============================================
-  // 📤 FONCTION: UPLOAD IMAGE
-  // ============================================
+  // ✅ UPLOAD FICHIERS
   const uploadImage = async (file: File, userId: string): Promise<any> => {
     try {
       setIsUploadingImage(true);
@@ -1068,16 +456,13 @@ export const MessagingProvider: React.FC<{ children: React.ReactNode }> = ({
       };
     } catch (err: any) {
       setError(err.message || "Erreur upload image");
-      console.error("❌ ERREUR: Upload image:", err);
+      console.error("Erreur upload image:", err);
       return null;
     } finally {
       setIsUploadingImage(false);
     }
   };
 
-  // ============================================
-  // 📤 FONCTION: UPLOAD VIDEO
-  // ============================================
   const uploadVideo = async (file: File, userId: string): Promise<any> => {
     try {
       setIsUploadingVideo(true);
@@ -1143,7 +528,7 @@ export const MessagingProvider: React.FC<{ children: React.ReactNode }> = ({
       };
     } catch (err: any) {
       setError(err.message || "Erreur upload vidéo");
-      console.error("❌ ERREUR: Upload vidéo:", err);
+      console.error("Erreur upload vidéo:", err);
       return null;
     } finally {
       setIsUploadingVideo(false);
@@ -1151,9 +536,6 @@ export const MessagingProvider: React.FC<{ children: React.ReactNode }> = ({
     }
   };
 
-  // ============================================
-  // 📤 FONCTION: UPLOAD DOCUMENT
-  // ============================================
   const uploadDocument = async (file: File, userId: string): Promise<any> => {
     try {
       setIsUploadingDocument(true);
@@ -1209,16 +591,13 @@ export const MessagingProvider: React.FC<{ children: React.ReactNode }> = ({
       };
     } catch (err: any) {
       setError(err.message || "Erreur upload document");
-      console.error("❌ ERREUR: Upload document:", err);
+      console.error("Erreur upload document:", err);
       return null;
     } finally {
       setIsUploadingDocument(false);
     }
   };
 
-  // ============================================
-  // 🗑️ FONCTIONS: SUPPRESSION FICHIERS
-  // ============================================
   const deleteImage = async (path: string): Promise<boolean> => {
     try {
       const { error } = await supabase.storage
@@ -1227,7 +606,7 @@ export const MessagingProvider: React.FC<{ children: React.ReactNode }> = ({
       if (error) throw error;
       return true;
     } catch (err) {
-      console.error("❌ ERREUR: Suppression image:", err);
+      console.error("Erreur suppression image:", err);
       return false;
     }
   };
@@ -1240,7 +619,7 @@ export const MessagingProvider: React.FC<{ children: React.ReactNode }> = ({
       if (error) throw error;
       return true;
     } catch (err) {
-      console.error("❌ ERREUR: Suppression vidéo:", err);
+      console.error("Erreur suppression vidéo:", err);
       return false;
     }
   };
@@ -1253,232 +632,827 @@ export const MessagingProvider: React.FC<{ children: React.ReactNode }> = ({
       if (error) throw error;
       return true;
     } catch (err) {
-      console.error("❌ ERREUR: Suppression document:", err);
+      console.error("Erreur suppression document:", err);
       return false;
     }
   };
 
-  // ============================================
-  // 🔴 SUBSCRIPTIONS REALTIME SÉCURISÉES
-  // ============================================
-  useEffect(() => {
-    if (!currentUserId) return;
+  const GetConversationMessages = useCallback(
+    async (conversationId: string): Promise<Message[]> => {
+      try {
+        const currentUserId = currentSession?.user?.id;
+        if (!currentUserId) return [];
 
-    let conversationsChannel: any = null;
-    let messagesChannel: any = null;
+        const conversation = await GetConversationById(conversationId);
+        if (!conversation) return [];
 
-    const setupSubscriptions = async () => {
-      console.log("🔔 Configuration subscriptions pour:", currentUserId);
+        const allMessages = await SelectData("messages");
+        if (!allMessages) return [];
 
-      // ✅ SUBSCRIPTION CONVERSATIONS avec FILTRE RLS
-      conversationsChannel = supabase
-        .channel(`conversations-${currentUserId}`)
-        .on(
-          "postgres_changes",
-          {
-            event: "*",
-            schema: "public",
-            table: "conversations",
-            // RLS filtrera automatiquement côté Supabase
-          },
-          async (payload: any) => {
-            console.log("🔔 Changement conversation:", payload);
+        const isUser1 = conversation.user1_id === currentUserId;
 
-            // ✅ VÉRIFICATION CLIENT-SIDE
-            if (
-              payload.new &&
-              (payload.new.user1_id === currentUserId ||
-                payload.new.user2_id === currentUserId)
-            ) {
-              const hasAccess = await hasAccessToConversation(payload.new.id);
-              if (hasAccess) {
-                console.log("✅ Rechargement conversations après changement");
-                await loadConversations();
+        const conversationMessages = allMessages
+          .filter((msg: Message) => {
+            const isInConv = msg.conversation_id === conversationId;
+            const isDeleted = isUser1
+              ? msg.is_deleted_user1
+              : msg.is_deleted_user2;
+            return isInConv && !isDeleted;
+          })
+          .sort(
+            (a: Message, b: Message) =>
+              new Date(a.created_at).getTime() -
+              new Date(b.created_at).getTime()
+          );
 
-                if (
-                  currentConversation &&
-                  payload.new?.id === currentConversation.id
-                ) {
-                  await loadMessages(currentConversation.id);
-                }
-              } else {
-                console.warn("🚫 SÉCURITÉ: Changement ignoré - pas d'accès");
-              }
+        return conversationMessages;
+      } catch (error) {
+        console.error("Erreur GetConversationMessages:", error);
+        return [];
+      }
+    },
+    [currentSession?.user?.id]
+  );
+  const RefreshMessages = useCallback(
+    async (conversationId: string) => {
+      const conversationMessages = await GetConversationMessages(
+        conversationId
+      );
+      setMessages(conversationMessages);
+    },
+    [GetConversationMessages]
+  );
+  const MarkMessageAsRead = useCallback(
+    async (messageId: string): Promise<boolean> => {
+      try {
+        const currentUserId = currentSession?.user?.id;
+        if (!currentUserId) return false;
+
+        const allMessages = await SelectData("messages");
+        const message = allMessages?.find((m: Message) => m.id === messageId);
+        if (!message) return false;
+
+        const conversation = await GetConversationById(message.conversation_id);
+        if (!conversation) return false;
+
+        const isUser1 = conversation.user1_id === currentUserId;
+        const updateData = isUser1
+          ? {
+              is_read_user1: true,
+              read_at_user1: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
             }
-          }
-        )
-        .subscribe();
+          : {
+              is_read_user2: true,
+              read_at_user2: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            };
 
-      // ✅ SUBSCRIPTION MESSAGES avec VÉRIFICATION
-      messagesChannel = supabase
-        .channel(`messages-${currentUserId}`)
+        const success = await UpdateData("messages", messageId, updateData);
+
+        if (success === true) {
+          await RefreshMessages(message.conversation_id);
+          return true;
+        }
+        return false;
+      } catch (error) {
+        console.error("Erreur MarkMessageAsRead:", error);
+        return false;
+      }
+    },
+    [RefreshMessages, currentSession?.user?.id]
+  );
+
+  const handleNewMessage = useCallback(
+    async (newMessage: Message) => {
+      try {
+        // Vérifier si l'utilisateur actuel a accès à cette conversation
+        const conversation = await GetConversationById(
+          newMessage.conversation_id
+        );
+        if (!conversation) return;
+
+        const currentUserId = currentSession?.user?.id;
+        if (!currentUserId) return;
+
+        // Vérifier les droits d'accès
+        const hasAccess =
+          (conversation.user1_id === currentUserId &&
+            !conversation.is_deleted_user1 &&
+            !conversation.is_blocked_user2) ||
+          (conversation.user2_id === currentUserId &&
+            !conversation.is_deleted_user2 &&
+            !conversation.is_blocked_user1);
+
+        if (!hasAccess) return;
+
+        // Vérifier si le message n'est pas déjà dans la liste
+        const messageExists = messages.some((msg) => msg.id === newMessage.id);
+        if (messageExists) return;
+
+        // Si le message appartient à la conversation actuelle, l'ajouter
+        if (
+          currentConversation &&
+          currentConversation.id === newMessage.conversation_id
+        ) {
+          setMessages((prev) => {
+            // Éviter les doublons
+            if (prev.some((msg) => msg.id === newMessage.id)) return prev;
+            return [...prev, newMessage];
+          });
+
+          // Marquer comme lu si c'est l'utilisateur actuel qui regarde
+          if (newMessage.sender_id !== currentUserId) {
+            MarkMessageAsRead(newMessage.id);
+          }
+        }
+
+        // Mettre à jour la dernière conversation
+        await RefreshConversations();
+      } catch (error) {
+        console.error("❌ Erreur handleNewMessage:", error);
+      }
+    },
+    [
+      MarkMessageAsRead,
+      RefreshConversations,
+      currentConversation,
+      currentSession?.user?.id,
+      messages,
+    ]
+  );
+
+  const handleUpdatedMessage = (updatedMessage: Message) => {
+    setMessages((prev) =>
+      prev.map((msg) => (msg.id === updatedMessage.id ? updatedMessage : msg))
+    );
+  };
+
+  const handleUpdatedConversation = useCallback(
+    async (updatedConversation: Conversation) => {
+      await RefreshConversations();
+    },
+    [RefreshConversations]
+  );
+
+  const initializeRealtime = useCallback(() => {
+    try {
+      // S'abonner aux nouveaux messages
+      const subscription = supabase
+        .channel("messages-changes")
         .on(
           "postgres_changes",
           {
-            event: "*",
+            event: "INSERT",
             schema: "public",
             table: "messages",
-            // RLS filtrera automatiquement
           },
-          async (payload: any) => {
-            console.log("🔔 Changement message:", payload);
-
-            if (payload.new?.conversation_id) {
-              // ✅ VÉRIFICATION CRITIQUE D'ACCÈS
-              const hasAccess = await hasAccessToConversation(
-                payload.new.conversation_id
-              );
-
-              if (!hasAccess) {
-                console.warn("🚫 SÉCURITÉ: Message ignoré - pas d'accès");
-                return;
-              }
-
-              // Vérifier que l'utilisateur fait partie de la conversation
-              const conversation = await SelectData("conversations", {
-                conditions: [
-                  {
-                    column: "id",
-                    operator: "eq",
-                    value: payload.new.conversation_id,
-                  },
-                ],
-              });
-
-              if (conversation && conversation.length > 0) {
-                const conv = conversation[0];
-                if (
-                  conv.user1_id !== currentUserId &&
-                  conv.user2_id !== currentUserId
-                ) {
-                  console.warn(
-                    "🚫 SÉCURITÉ: Message ignoré - utilisateur non autorisé"
-                  );
-                  return;
-                }
-              }
-
-              console.log("✅ Rechargement après nouveau message");
-              await loadConversations();
-
-              if (
-                currentConversation &&
-                payload.new?.conversation_id === currentConversation.id
-              ) {
-                await loadMessages(currentConversation.id);
-
-                // Marquer comme lu si message d'un autre utilisateur
-                if (
-                  payload.new?.sender_id !== currentUserId &&
-                  !payload.new?.is_read
-                ) {
-                  await markAsRead(currentConversation.id);
-                }
-              }
-            }
+          (payload) => {
+            handleNewMessage(payload.new as Message);
           }
         )
-        .subscribe();
-    };
+        .on(
+          "postgres_changes",
+          {
+            event: "UPDATE",
+            schema: "public",
+            table: "messages",
+          },
+          (payload) => {
+            handleUpdatedMessage(payload.new as Message);
+          }
+        )
+        .on(
+          "postgres_changes",
+          {
+            event: "UPDATE",
+            schema: "public",
+            table: "conversations",
+          },
+          (payload) => {
+            handleUpdatedConversation(payload.new as Conversation);
+          }
+        )
+        .subscribe((status) => {
+          console.log("🔄 Statut Realtime:", status);
+          setRealtimeConnected(status === "SUBSCRIBED");
+        });
 
-    setupSubscriptions();
+      setRealtimeSubscription(subscription);
+    } catch (error) {
+      console.error("❌ Erreur initialisation Realtime:", error);
+    }
+  }, [handleNewMessage, handleUpdatedConversation]);
+
+  // ============= FONCTIONS CONVERSATIONS =============
+
+  const GetOrCreateConversation = async (
+    otherUserId: string,
+    conversationType: string = "direct",
+    orderDetails?: any
+  ): Promise<Conversation | null> => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const currentUserId = currentSession?.user?.id;
+      if (!currentUserId) {
+        setError("Utilisateur non connecté");
+        return null;
+      }
+
+      // Rechercher une conversation existante
+      const allConversations = await SelectData("conversations");
+      const existingConversation = allConversations?.find(
+        (conv: Conversation) => {
+          return (
+            ((conv.user1_id === currentUserId &&
+              conv.user2_id === otherUserId) ||
+              (conv.user1_id === otherUserId &&
+                conv.user2_id === currentUserId)) &&
+            conv.conversation_type === conversationType
+          );
+        }
+      );
+
+      if (existingConversation) {
+        return existingConversation as Conversation;
+      }
+
+      // Créer une nouvelle conversation
+      const newConversation = {
+        user1_id: currentUserId,
+        user2_id: otherUserId,
+        conversation_type: conversationType,
+        is_archived_user1: false,
+        is_archived_user2: false,
+        is_blocked_user1: false,
+        is_blocked_user2: false,
+        is_spam_user1: false,
+        is_spam_user2: false,
+        is_starred_user1: false,
+        is_starred_user2: false,
+        is_deleted_user1: false,
+        is_deleted_user2: false,
+        last_message_at: new Date().toISOString(),
+        ...(orderDetails && {
+          order_id: orderDetails.order_id,
+          service_id: orderDetails.service_id,
+          project_title: orderDetails.project_title,
+          budget_amount: orderDetails.budget_amount,
+          budget_currency: orderDetails.budget_currency,
+          deadline: orderDetails.deadline,
+        }),
+      };
+
+      const result = await InsertDataReturn("conversations", newConversation);
+
+      if (result?.success && result.rows && result.rows.length > 0) {
+        await RefreshConversations();
+        return result.rows[0] as Conversation;
+      }
+
+      setError("Erreur lors de la création de la conversation");
+      return null;
+    } catch (error: any) {
+      console.error("❌ Erreur GetOrCreateConversation:", error);
+      setError(error.message || "Erreur lors de la gestion de la conversation");
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const GetConversationById = async (
+    conversationId: string
+  ): Promise<Conversation | null> => {
+    try {
+      const conversations = await SelectData("conversations");
+      const conversation = conversations?.find(
+        (c: Conversation) => c.id === conversationId
+      );
+      return conversation || null;
+    } catch (error) {
+      console.error("Erreur GetConversationById:", error);
+      return null;
+    }
+  };
+
+  useEffect(() => {
+    if (currentSession?.isAuthenticated && currentSession?.user?.id) {
+      initializeRealtime();
+    }
 
     return () => {
-      console.log("🔴 Désinscription subscriptions");
-      if (conversationsChannel) supabase.removeChannel(conversationsChannel);
-      if (messagesChannel) supabase.removeChannel(messagesChannel);
+      // Nettoyer l'abonnement Realtime
+      if (realtimeSubscription) {
+        realtimeSubscription.unsubscribe();
+      }
     };
   }, [
-    currentUserId,
-    currentConversation,
-    loadConversations,
-    loadMessages,
-    markAsRead,
-    hasAccessToConversation,
+    currentSession?.isAuthenticated,
+    currentSession?.user?.id,
+    initializeRealtime,
+    realtimeSubscription,
   ]);
 
-  // ============================================
-  // 🔄 CHARGEMENT INITIAL
-  // ============================================
-  useEffect(() => {
-    if (currentUserId) {
-      console.log("🔄 Chargement initial conversations");
-      loadConversations();
-    }
-  }, [currentUserId, loadConversations]);
+  const DeleteConversation = async (
+    conversationId: string
+  ): Promise<boolean> => {
+    try {
+      const currentUserId = currentSession?.user?.id;
+      if (!currentUserId) return false;
 
-  useEffect(() => {
-    if (currentConversation) {
-      console.log(
-        "🔄 Chargement messages conversation:",
-        currentConversation.id
+      const conversation = await GetConversationById(conversationId);
+      if (!conversation) return false;
+
+      const isUser1 = conversation.user1_id === currentUserId;
+      const updateData = isUser1
+        ? {
+            is_deleted_user1: true,
+            deleted_at_user1: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          }
+        : {
+            is_deleted_user2: true,
+            deleted_at_user2: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          };
+
+      const success = await UpdateData(
+        "conversations",
+        conversationId,
+        updateData
       );
-      loadMessages(currentConversation.id);
+
+      if (success === true) {
+        await RefreshConversations();
+        if (currentConversation?.id === conversationId) {
+          setCurrentConversation(null);
+        }
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error("Erreur DeleteConversation:", error);
+      return false;
+    }
+  };
+
+  const ArchiveConversation = async (
+    conversationId: string,
+    archive: boolean
+  ): Promise<boolean> => {
+    try {
+      const currentUserId = currentSession?.user?.id;
+      if (!currentUserId) return false;
+
+      const conversation = await GetConversationById(conversationId);
+      if (!conversation) return false;
+
+      const isUser1 = conversation.user1_id === currentUserId;
+      const updateData = isUser1
+        ? { is_archived_user1: archive, updated_at: new Date().toISOString() }
+        : { is_archived_user2: archive, updated_at: new Date().toISOString() };
+
+      const success = await UpdateData(
+        "conversations",
+        conversationId,
+        updateData
+      );
+
+      if (success === true) {
+        await RefreshConversations();
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error("Erreur ArchiveConversation:", error);
+      return false;
+    }
+  };
+
+  const BlockConversation = async (
+    conversationId: string,
+    block: boolean
+  ): Promise<boolean> => {
+    try {
+      const currentUserId = currentSession?.user?.id;
+      if (!currentUserId) return false;
+
+      const conversation = await GetConversationById(conversationId);
+      if (!conversation) return false;
+
+      const isUser1 = conversation.user1_id === currentUserId;
+      const updateData = isUser1
+        ? { is_blocked_user1: block, updated_at: new Date().toISOString() }
+        : { is_blocked_user2: block, updated_at: new Date().toISOString() };
+
+      const success = await UpdateData(
+        "conversations",
+        conversationId,
+        updateData
+      );
+
+      if (success === true) {
+        await RefreshConversations();
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error("Erreur BlockConversation:", error);
+      return false;
+    }
+  };
+
+  const StarConversation = async (
+    conversationId: string,
+    star: boolean
+  ): Promise<boolean> => {
+    try {
+      const currentUserId = currentSession?.user?.id;
+      if (!currentUserId) return false;
+
+      const conversation = await GetConversationById(conversationId);
+      if (!conversation) return false;
+
+      const isUser1 = conversation.user1_id === currentUserId;
+      const updateData = isUser1
+        ? { is_starred_user1: star, updated_at: new Date().toISOString() }
+        : { is_starred_user2: star, updated_at: new Date().toISOString() };
+
+      const success = await UpdateData(
+        "conversations",
+        conversationId,
+        updateData
+      );
+
+      if (success === true) {
+        await RefreshConversations();
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error("Erreur StarConversation:", error);
+      return false;
+    }
+  };
+
+  const MarkConversationAsSpam = async (
+    conversationId: string,
+    spam: boolean
+  ): Promise<boolean> => {
+    try {
+      const currentUserId = currentSession?.user?.id;
+      if (!currentUserId) return false;
+
+      const conversation = await GetConversationById(conversationId);
+      if (!conversation) return false;
+
+      const isUser1 = conversation.user1_id === currentUserId;
+      const updateData = isUser1
+        ? { is_spam_user1: spam, updated_at: new Date().toISOString() }
+        : { is_spam_user2: spam, updated_at: new Date().toISOString() };
+
+      const success = await UpdateData(
+        "conversations",
+        conversationId,
+        updateData
+      );
+
+      if (success === true) {
+        await RefreshConversations();
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error("Erreur MarkConversationAsSpam:", error);
+      return false;
+    }
+  };
+
+  const SetCurrentConversation = (
+    conversation: ConversationWithDetails | null
+  ) => {
+    setCurrentConversation(conversation);
+    if (conversation) {
+      RefreshMessages(conversation.id);
+      MarkAllMessagesAsRead(conversation.id);
     } else {
       setMessages([]);
     }
-  }, [currentConversation, loadMessages]);
-
-  // ============================================
-  // 📦 VALEUR DU CONTEXTE
-  // ============================================
-  const value: MessagingContextType = {
-    conversations,
-    currentConversation,
-    setCurrentConversation,
-    messages,
-    loading,
-    error,
-    setError,
-    isUploadingImage,
-    isUploadingVideo,
-    isUploadingDocument,
-    isCompressingVideo,
-    videoCompressionProgress,
-    videoUploadProgress,
-    imageCompressionProgress,
-    videoUploadStep,
-    sendMessage,
-    createConversation,
-    markAsRead,
-    toggleStar,
-    archiveConversation,
-    reportConversation,
-    deleteMessage,
-    deleteAllMessagesForUser,
-    deleteConversation,
-    uploadImage,
-    uploadVideo,
-    uploadDocument,
-    deleteImage,
-    deleteVideo,
-    deleteDocument,
-    searchTerm,
-    setSearchTerm,
-    activeFilter,
-    setActiveFilter,
-    isMobile,
-    showSidebar,
-    setShowSidebar,
-    messagesEndRef,
-    hasAccessToConversation,
-    validateConversationAccess,
   };
 
+  // ============= FONCTIONS MESSAGES =============
+
+  const SendMessage = async (
+    conversationId: string,
+    content: string,
+    messageType: string = "text",
+    fileData?: any
+  ): Promise<Message | null> => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const currentUserId = currentSession?.user?.id;
+      if (!currentUserId) {
+        setError("Utilisateur non connecté");
+        return null;
+      }
+
+      const messageData: any = {
+        conversation_id: conversationId,
+        sender_id: currentUserId,
+        content: content.trim(),
+        message_type: messageType,
+        is_read_user1: false,
+        is_read_user2: false,
+        is_starred: false,
+        is_edited: false,
+        is_deleted_user1: false,
+        is_deleted_user2: false,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+      if (fileData) {
+        messageData.file_url = fileData.file_url;
+        messageData.file_name = fileData.file_name;
+        messageData.file_size = fileData.file_size;
+        messageData.file_type = fileData.file_type;
+      }
+
+      // ✅ UTILISER LA MÊME MÉTHODE QUE DANS TON AUTRE CONTEXTE
+      const result = await InsertDataReturn("messages", messageData);
+
+      if (result?.success && result.rows && result.rows.length > 0) {
+        // Mettre à jour last_message_at de la conversation
+        await UpdateData("conversations", conversationId, {
+          last_message_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        });
+
+        // Recharger les données
+        await RefreshMessages(conversationId);
+        await RefreshConversations();
+
+        return result.rows[0] as Message;
+      }
+
+      setError("Erreur lors de l'envoi du message");
+      return null;
+    } catch (error: any) {
+      console.error("❌ Erreur SendMessage:", error);
+      setError(error.message || "Erreur lors de l'envoi du message");
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const MarkAllMessagesAsRead = async (
+    conversationId: string
+  ): Promise<boolean> => {
+    try {
+      const currentUserId = currentSession?.user?.id;
+      if (!currentUserId) return false;
+
+      const conversationMessages = await GetConversationMessages(
+        conversationId
+      );
+      const unreadMessages = conversationMessages.filter(
+        (msg) => msg.sender_id !== currentUserId
+      );
+
+      for (const msg of unreadMessages) {
+        const isUser1 =
+          currentUserId ===
+          (await GetConversationById(conversationId))?.user1_id;
+        const updateData = isUser1
+          ? {
+              is_read_user1: true,
+              read_at_user1: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            }
+          : {
+              is_read_user2: true,
+              read_at_user2: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            };
+
+        await UpdateData("messages", msg.id, updateData);
+      }
+
+      await RefreshMessages(conversationId);
+      await RefreshConversations();
+      return true;
+    } catch (error) {
+      console.error("Erreur MarkAllMessagesAsRead:", error);
+      return false;
+    }
+  };
+
+  const DeleteMessage = async (messageId: string): Promise<boolean> => {
+    try {
+      const currentUserId = currentSession?.user?.id;
+      if (!currentUserId) return false;
+
+      const allMessages = await SelectData("messages");
+      const message = allMessages?.find((m: Message) => m.id === messageId);
+      if (!message) return false;
+
+      const conversation = await GetConversationById(message.conversation_id);
+      if (!conversation) return false;
+
+      const isUser1 = conversation.user1_id === currentUserId;
+      const updateData = isUser1
+        ? {
+            is_deleted_user1: true,
+            deleted_at_user1: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          }
+        : {
+            is_deleted_user2: true,
+            deleted_at_user2: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          };
+
+      const success = await UpdateData("messages", messageId, updateData);
+
+      if (success === true && currentConversation) {
+        await RefreshMessages(currentConversation.id);
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error("Erreur DeleteMessage:", error);
+      return false;
+    }
+  };
+
+  const EditMessage = async (
+    messageId: string,
+    newContent: string
+  ): Promise<boolean> => {
+    try {
+      const success = await UpdateData("messages", messageId, {
+        content: newContent,
+        is_edited: true,
+        edited_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      });
+
+      if (success === true && currentConversation) {
+        await RefreshMessages(currentConversation.id);
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error("Erreur EditMessage:", error);
+      return false;
+    }
+  };
+
+  const StarMessage = async (
+    messageId: string,
+    star: boolean
+  ): Promise<boolean> => {
+    try {
+      const success = await UpdateData("messages", messageId, {
+        is_starred: star,
+        updated_at: new Date().toISOString(),
+      });
+
+      if (success === true && currentConversation) {
+        await RefreshMessages(currentConversation.id);
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error("Erreur StarMessage:", error);
+      return false;
+    }
+  };
+
+  const ReplyToMessage = async (
+    conversationId: string,
+    content: string,
+    replyToId: string
+  ): Promise<Message | null> => {
+    return await SendMessage(conversationId, content, "text", {
+      reply_to_id: replyToId,
+    });
+  };
+
+  // ============= FONCTIONNALITÉS FREELANCE =============
+
+  const SendProposal = async (
+    conversationId: string,
+    proposalData: any
+  ): Promise<Message | null> => {
+    const content = `Nouvelle proposition: ${proposalData.title} - ${proposalData.amount}${proposalData.currency}`;
+    return await SendMessage(conversationId, content, "proposal", {
+      proposal_details: proposalData,
+    });
+  };
+
+  const SendMilestone = async (
+    conversationId: string,
+    milestoneData: any
+  ): Promise<Message | null> => {
+    const content = `Livrable: ${milestoneData.title} - ${milestoneData.amount}${milestoneData.currency}`;
+    return await SendMessage(conversationId, content, "milestone", {
+      milestone_number: milestoneData.number,
+      payment_amount: milestoneData.amount,
+      delivery_date: milestoneData.due_date,
+    });
+  };
+
+  const SendPaymentRequest = async (
+    conversationId: string,
+    paymentData: any
+  ): Promise<Message | null> => {
+    const content = `Demande de paiement: ${paymentData.amount}${paymentData.currency}`;
+    return await SendMessage(conversationId, content, "payment", {
+      payment_amount: paymentData.amount,
+      order_details: paymentData.order_details,
+    });
+  };
+
+  // ============= FONCTIONS REFRESH =============
+
+  // ============= EFFET INITIAL =============
+
+  useEffect(() => {
+    if (currentSession?.isAuthenticated && currentSession?.user?.id) {
+      RefreshConversations();
+    }
+  }, [
+    RefreshConversations,
+    currentSession?.isAuthenticated,
+    currentSession?.user?.id,
+  ]);
+
   return (
-    <MessagingContext.Provider value={value}>
+    <MessagingContext.Provider
+      value={{
+        conversations,
+        currentConversation,
+        GetOrCreateConversation,
+        GetConversationById,
+        GetUserConversations,
+        DeleteConversation,
+        ArchiveConversation,
+        BlockConversation,
+        StarConversation,
+        MarkConversationAsSpam,
+        SendMessageWithFile,
+        SetCurrentConversation,
+        messages,
+        uploadImage,
+        uploadVideo,
+        uploadDocument,
+        deleteImage,
+        deleteVideo,
+        deleteDocument,
+
+        error,
+
+        isUploadingImage,
+        isUploadingVideo,
+        isUploadingDocument,
+        isCompressingVideo,
+        videoCompressionProgress,
+        videoUploadProgress,
+        imageCompressionProgress,
+        videoUploadStep,
+        SendMessage,
+        GetConversationMessages,
+        MarkMessageAsRead,
+        MarkAllMessagesAsRead,
+        DeleteMessage,
+        EditMessage,
+        StarMessage,
+        ReplyToMessage,
+        SendProposal,
+        SendMilestone,
+
+        SendPaymentRequest,
+        loading,
+        realtimeConnected,
+        RefreshConversations,
+        RefreshMessages,
+      }}
+    >
       {children}
     </MessagingContext.Provider>
   );
 };
 
-// ============================================
-// 🎣 HOOK PERSONNALISÉ
-// ============================================
 export const useMessaging = (): MessagingContextType => {
   const context = useContext(MessagingContext);
   if (!context) {
-    throw new Error("useMessaging must be used within MessagingProvider");
+    throw new Error("useMessaging doit être utilisé dans un MessagingProvider");
   }
   return context;
 };

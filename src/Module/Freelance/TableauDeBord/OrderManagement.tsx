@@ -367,7 +367,7 @@ const OrderManagement = () => {
 
         {/* Statistiques */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-          <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg shadow p-4 border border-blue-200">
+          <div className="bg-linear-to-br from-blue-50 to-blue-100 rounded-lg shadow p-4 border border-blue-200">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-blue-700">Commandes actives</p>
@@ -378,7 +378,7 @@ const OrderManagement = () => {
               <Package className="text-blue-600" size={32} />
             </div>
           </div>
-          <div className="bg-gradient-to-br from-red-50 to-red-100 rounded-lg shadow p-4 border border-red-200">
+          <div className="bg-linear-to-br from-red-50 to-red-100 rounded-lg shadow p-4 border border-red-200">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-red-700">En révision</p>
@@ -389,7 +389,7 @@ const OrderManagement = () => {
               <RefreshCw className="text-red-600" size={32} />
             </div>
           </div>
-          <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-lg shadow p-4 border border-green-200">
+          <div className="bg-linear-to-br from-green-50 to-green-100 rounded-lg shadow p-4 border border-green-200">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-green-700">Livrées ce mois</p>
@@ -400,7 +400,7 @@ const OrderManagement = () => {
               <CheckCircle className="text-green-600" size={32} />
             </div>
           </div>
-          <div className="bg-gradient-to-br from-yellow-50 to-yellow-100 rounded-lg shadow p-4 border border-yellow-200">
+          <div className="bg-linear-to-br from-yellow-50 to-yellow-100 rounded-lg shadow p-4 border border-yellow-200">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-yellow-700">Revenu actuel</p>
@@ -512,7 +512,7 @@ const OrderManagement = () => {
                     <tr key={order.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
-                          <div className="w-10 h-10 bg-gradient-to-br from-yellow-400 to-red-500 rounded-full flex items-center justify-center text-white font-semibold mr-3">
+                          <div className="w-10 h-10 bg-linear-to-br from-yellow-400 to-red-500 rounded-full flex items-center justify-center text-white font-semibold mr-3">
                             {order.client.charAt(0)}
                           </div>
                           <div>

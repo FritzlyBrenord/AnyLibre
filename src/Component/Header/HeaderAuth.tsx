@@ -156,7 +156,7 @@ const HeaderAuth = () => {
 
   // Calculer le nombre total de messages non lus
   const unreadCount = conversations.reduce(
-    (total, conv) => total + (conv.unread_count || 0),
+    (total, conv) => total + (conv.unreadCount || 0),
     0
   );
 
@@ -330,9 +330,25 @@ const HeaderAuth = () => {
     }
   };
 
-  // Récupérer les conversations récentes pour le dropdown
+  // CORRECTION : Récupérer les conversations récentes pour le dropdown avec vérification user1/user2
   const recentConversations = conversations
-    .filter((conv) => !conv.is_archived && !conv.is_spam)
+    .filter((conv) => {
+      const currentUserId = currentSession?.userProfile?.id;
+      if (!currentUserId) return false;
+
+      // Déterminer si l'utilisateur connecté est user1 ou user2
+      const isUser1 = conv.user1_id === currentUserId;
+
+      // Utiliser les champs spécifiques à l'utilisateur connecté
+      const isArchived = isUser1
+        ? conv.is_archived_user1
+        : conv.is_archived_user2;
+      const isSpam = isUser1 ? conv.is_spam_user1 : conv.is_spam_user2;
+      const isDeleted = isUser1 ? conv.is_deleted_user1 : conv.is_deleted_user2;
+
+      // Filtrer les conversations non archivées, non spam et non supprimées
+      return !isArchived && !isSpam && !isDeleted;
+    })
     .sort(
       (a, b) =>
         Number(new Date(b.last_message_at)) -
@@ -366,7 +382,7 @@ const HeaderAuth = () => {
           setMessagesMenuOpen(false);
         }}
       >
-        <div className="flex-shrink-0 mr-3">
+        <div className="shrink-0 mr-3">
           {userInfo.photo ? (
             <img
               src={userInfo.photo}
@@ -374,7 +390,7 @@ const HeaderAuth = () => {
               className="w-8 h-8 rounded-full object-cover"
             />
           ) : (
-            <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white text-sm font-medium">
+            <div className="w-8 h-8 bg-linear-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white text-sm font-medium">
               {(
                 userInfo.nom.charAt(0) + userInfo.prenom.charAt(0)
               ).toUpperCase() || "U"}
@@ -391,7 +407,7 @@ const HeaderAuth = () => {
             </span>
           </p>
           <p className="text-xs text-gray-500 truncate">
-            {conversation.last_message?.content || "Aucun message"}
+            {conversation.lastMessage?.content || "Aucun message"}
           </p>
         </div>
         {conversation.unread_count > 0 && (
@@ -763,7 +779,7 @@ const HeaderAuth = () => {
                       setProfileMenuOpen(!profileMenuOpen);
                     }}
                   >
-                    <div className="w-8 h-8 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white font-medium text-sm">
+                    <div className="w-8 h-8 bg-linear-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white font-medium text-sm">
                       {getUserInitials()}
                     </div>
                     <ChevronDown className="h-4 w-4 text-gray-500" />
@@ -775,7 +791,7 @@ const HeaderAuth = () => {
                       {/* En-tête profil */}
                       <div className="px-4 pt-4 pb-3 bg-gray-50">
                         <div className="flex items-center">
-                          <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white font-medium">
+                          <div className="w-10 h-10 bg-linear-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white font-medium">
                             {getUserInitials()}
                           </div>
                           <div className="ml-3">
@@ -1070,7 +1086,7 @@ const HeaderAuth = () => {
                 {isLoggedIn && (
                   <div className="px-3 py-3 bg-gray-50 rounded-lg mb-2">
                     <div className="flex items-center">
-                      <div className="w-10 h-10 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white font-medium">
+                      <div className="w-10 h-10 bg-linear-to-r from-purple-500 to-pink-500 rounded-full flex items-center justify-center text-white font-medium">
                         {getUserInitials()}
                       </div>
                       <div className="ml-3">

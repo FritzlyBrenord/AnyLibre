@@ -474,16 +474,16 @@ export default function AuthPage() {
 
   // ✅ Si déjà connecté, rediriger immédiatement
   useEffect(() => {
-    if (currentSession.isAuthenticated) {
+    if (currentSession?.isAuthenticated) {
       console.log("✅ Utilisateur déjà connecté, redirection immédiate");
       const redirectUrl = searchParams.get("redirect");
       const destination = redirectUrl || "/Accueil";
       window.location.href = destination;
     }
-  }, [currentSession.isAuthenticated, searchParams]);
+  }, [currentSession?.isAuthenticated, searchParams]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-100 to-slate-300 relative overflow-hidden py-20">
+    <div className="min-h-screen flex items-center justify-center bg-linear-to-br from-slate-100 to-slate-300 relative overflow-hidden py-20">
       {/* Animated background elements */}
       <div className="absolute inset-0 z-0 overflow-hidden">
         <div className="absolute w-[500px] h-[500px] rounded-full bg-blue-500/5 blur-3xl top-[-100px] right-[-100px] animate-pulse"></div>
@@ -499,7 +499,7 @@ export default function AuthPage() {
         <div className="hidden md:flex md:w-1/2 flex-col justify-center items-center p-8 rounded-l-2xl bg-white backdrop-blur-xl text-slate-700 border-r border-slate-200">
           <div className="mb-10 w-full">
             <div className="relative flex flex-col items-center">
-              <div className="w-72 h-72 bg-gradient-to-br from-blue-50 to-purple-100 rounded-2xl p-6 backdrop-blur-sm border border-slate-200 shadow-xl relative overflow-hidden">
+              <div className="w-72 h-72 bg-linear-to-br from-blue-50 to-purple-100 rounded-2xl p-6 backdrop-blur-sm border border-slate-200 shadow-xl relative overflow-hidden">
                 <div className="absolute top-4 left-4 bg-white rounded-lg p-4 shadow-md border border-slate-200 w-16 h-16 flex items-center justify-center">
                   <User className="text-blue-500" size={30} />
                 </div>
@@ -514,7 +514,7 @@ export default function AuthPage() {
                 </div>
 
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center shadow-lg">
+                  <div className="w-20 h-20 bg-linear-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center shadow-lg">
                     <Star className="text-white" size={30} />
                   </div>
                 </div>
@@ -547,7 +547,7 @@ export default function AuthPage() {
         <div className="w-full md:w-1/2 bg-white p-8 rounded-2xl md:rounded-l-none shadow-xl border border-gray-100">
           <div className="text-center mb-8">
             <div className="md:hidden inline-flex items-center justify-center mb-6">
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-500 to-purple-600 bg-clip-text text-transparent">
+              <h1 className="text-3xl font-bold bg-linear-to-r from-blue-500 to-purple-600 bg-clip-text text-transparent">
                 ConnexionPro
               </h1>
             </div>
@@ -570,7 +570,7 @@ export default function AuthPage() {
           {error && (
             <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl flex items-start">
               <AlertCircle
-                className="text-red-500 mt-0.5 mr-3 flex-shrink-0"
+                className="text-red-500 mt-0.5 mr-3 shrink-0"
                 size={18}
               />
               <p className="text-red-700 text-sm">{error}</p>
@@ -643,7 +643,7 @@ export default function AuthPage() {
                   !formData.email ||
                   !formData.password
                 }
-                className="w-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white py-3.5 px-4 rounded-xl font-medium shadow-lg shadow-purple-500/20 flex items-center justify-center transition-all group disabled:opacity-70"
+                className="w-full bg-linear-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white py-3.5 px-4 rounded-xl font-medium shadow-lg shadow-purple-500/20 flex items-center justify-center transition-all group disabled:opacity-70"
               >
                 {loading || authLoading ? (
                   <Loader2 className="w-5 h-5 mr-2 animate-spin" />
@@ -822,7 +822,7 @@ export default function AuthPage() {
                   !validation.password.isValid ||
                   checkingAvailability.email
                 }
-                className="w-full bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white py-3.5 px-4 rounded-xl font-medium shadow-lg shadow-purple-500/20 flex items-center justify-center transition-all group disabled:opacity-70 mt-6"
+                className="w-full bg-linear-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white py-3.5 px-4 rounded-xl font-medium shadow-lg shadow-purple-500/20 flex items-center justify-center transition-all group disabled:opacity-70 mt-6"
               >
                 <span>Continuer</span>
                 <ArrowRight
@@ -835,7 +835,7 @@ export default function AuthPage() {
             <form onSubmit={handleSignup} className="space-y-5">
               <div className="bg-blue-50 p-4 rounded-xl mb-4 flex items-start border border-blue-100">
                 <CheckCircle
-                  className="text-blue-500 mt-1 mr-3 flex-shrink-0"
+                  className="text-blue-500 mt-1 mr-3 shrink-0"
                   size={18}
                 />
                 <div>
@@ -924,7 +924,7 @@ export default function AuthPage() {
                     !validation.username.isValid ||
                     checkingAvailability.username
                   }
-                  className="w-2/3 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white py-3.5 px-4 rounded-xl font-medium shadow-lg shadow-purple-500/20 flex items-center justify-center transition-all group disabled:opacity-70"
+                  className="w-2/3 bg-linear-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white py-3.5 px-4 rounded-xl font-medium shadow-lg shadow-purple-500/20 flex items-center justify-center transition-all group disabled:opacity-70"
                 >
                   {loading || authLoading ? (
                     <Loader2 className="w-5 h-5 mr-2 animate-spin" />

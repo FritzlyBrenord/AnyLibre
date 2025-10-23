@@ -339,7 +339,7 @@ export const ServiceCard: React.FC<ServiceCardProps> = ({
       <div className="p-4">
         {/* Vendeur avec photo réelle */}
         <div className="flex items-center gap-2 mb-3">
-          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white font-bold text-sm overflow-hidden">
+          <div className="w-8 h-8 rounded-full bg-linear-to-br from-blue-400 to-purple-500 flex items-center justify-center text-white font-bold text-sm overflow-hidden">
             {service.seller.photo_url ? (
               <img
                 src={service.seller.photo_url}

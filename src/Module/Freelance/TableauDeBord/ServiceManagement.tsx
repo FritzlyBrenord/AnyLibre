@@ -284,7 +284,7 @@ const ServiceCard: React.FC<ServiceCardProps> = ({
           <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">
             {service.category} • {service.subcategory}
           </p>
-          <h3 className="font-semibold text-gray-900 text-base line-clamp-2 min-h-[3rem] mb-2">
+          <h3 className="font-semibold text-gray-900 text-base line-clamp-2 min-h-12 mb-2">
             {service.title}
           </h3>
 
@@ -463,7 +463,7 @@ const DetailModal: React.FC<DetailModalProps> = ({
             <h3 className="font-semibold text-gray-900 mb-3">Description</h3>
             <div className="max-w-3xl">
               <p
-                className={`text-gray-600 leading-relaxed whitespace-pre-wrap break-words ${
+                className={`text-gray-600 leading-relaxed whitespace-pre-wrap wrap-break-word ${
                   expanded ? "" : "line-clamp-3"
                 }`}
               >
